@@ -85,6 +85,7 @@ python discord/chat_discord.py
 ## 📚 Documentação & Especificações
 
 Para detalhes aprofundados sobre arquitetura, contratos e novos módulos:
+- 🛠️ [Guia de Configuração: Discord & Gemini](file:///Users/rodrigomodel/antigravity/configura%C3%A7%C3%A3o.md)
 - 📖 [Documentação Técnica do Módulo Discord](file:///Users/rodrigomodel/antigravity/discord/README.md)
 - 🏛️ [Arquitetura Geral & Fluxos](file:///Users/rodrigomodel/antigravity/discord/SPECs/ARQUITETURA.md)
 - 🗺️ [Roadmap de Desenvolvimento](file:///Users/rodrigomodel/antigravity/discord/SPECs/ROADMAP.md)

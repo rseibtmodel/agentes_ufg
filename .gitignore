@@ -16,6 +16,8 @@ discord/credentials.json
 discord/token.json
 *.lock
 discord/.bot.lock
+gemini-key.txt
+chat.md
 
 # Pastas ignoradas
 processo_interno/
