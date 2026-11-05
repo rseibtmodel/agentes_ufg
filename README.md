@@ -1,81 +1,91 @@
-# Antigravity Workspace
+# 🤖 Discord AI Bot — Antigravity
 
-Bem-vindo ao repositório **Antigravity**. Este workspace abriga dois subsistemas autônomos de Inteligência Artificial:
+Assistente conversacional inteligente e multiagente para o Discord, construído com arquitetura 100% assíncrona, suporte a roteamento híbrido de LLMs (LM Studio local e Google Gemini com failover automático), memória dual persistente (SQLite e ChromaDB isolado por usuário), catálogo extensível de ferramentas (Function Calling) e sistema de comandos interativos.
 
 ---
 
-## 📁 Estrutura de Projetos
+## 📁 Estrutura do Repositório
 
 ```text
 antigravity/
-├── processo_interno/        # Tribunal Antifraude B2B (CPI-TJA)
-│   ├── executar_pipeline.py # Script mestre do rito processual adversarial
-│   ├── orquestrador_*.py    # Orquestradores dos agentes (Acusação, Defesa, Juiz, Perito)
-│   ├── dataset_*.csv        # Base de dados de pedidos de compra
-│   ├── json/                # Registros estruturados de julgamento por execução
-│   ├── prompts/             # Prompts enviados aos modelos por execução
-│   ├── README.md            # Documentação completa do Tribunal Antifraude
-│   └── SPECS.md             # Especificações técnicas e limiares do CPI
-│
-├── discord/                 # Discord AI Bot & Google Calendar Integration
+├── .agents/                 # Catálogo de Skills e Agentes especializados
+├── discord/                 # Código-fonte principal do bot Discord
 │   ├── chat_discord.py      # Ponto de entrada do Bot no Discord Gateway
 │   ├── config.py            # Configuração centralizada e variáveis de ambiente
+│   ├── message_handler.py   # Orquestrador do fluxo e ciclo de mensagens
+│   ├── message_gateway.py   # Gateway outbox e controle de rate-limit
+│   ├── database.py          # Camada SQLite (memória conversacional e estado)
+│   ├── vector_db.py         # Memória semântica isolada com ChromaDB
+│   ├── llm_client.py        # Cliente assíncrono para LM Studio e Google Gemini
+│   ├── pdf_manager.py       # Gestão, RAG e indexação de documentos PDF
 │   ├── google_calendar.py   # Integração OAuth 2.0 com a agenda do Google
+│   ├── reminder_manager.py  # Worker de lembretes agendados em background
+│   ├── digest_manager.py    # Resumo matinal e síntese diária de atividades
 │   ├── list_manager.py      # Gestor de listas pessoais (mercado, tarefas)
-│   ├── reminder_manager.py  # Agendador de lembretes ativos em background
-│   ├── vector_db.py         # Memória semântica de longo prazo com ChromaDB
-│   ├── tools/               # Catálogo de ferramentas da LLM (Function Calling)
-│   ├── commands/            # Comandos de chat com prefixo (!)
-│   ├── README.md            # Documentação completa do Bot Discord
-│   └── SPECs/               # Especificações formais e arquitetura do Bot
-│
-├── .venv/                   # Ambiente virtual Python compartilhado
-├── gemini-key.txt           # Chave de API da Google GenAI (processo interno)
+│   ├── audio_manager.py     # Transcrição de áudio e voz via faster-whisper
+│   ├── ui_components.py     # Componentes interativos do Discord (Botões e Modals)
+│   ├── commands/            # Subsistema de Comandos de Prefixo (!)
+│   │   ├── registry.py      # Despachante e decorador @register_command
+│   │   └── builtins.py      # Catálogo de comandos nativos (!ajuda, !status, etc.)
+│   ├── tools/               # Catálogo de Ferramentas da LLM (Function Calling)
+│   │   ├── registry.py      # Despachante de tools e conversor de schemas
+│   │   └── *_tools.py       # Implementações (calendário, listas, web, etc.)
+│   ├── SPECs/               # Especificações Técnicas Formais e Arquitetura
+│   └── README.md            # Guia técnico detalhado do módulo Discord
+├── .gitignore               # Regras de exclusão do Git
+├── .venv/                   # Ambiente virtual Python
 └── README.md                # Este documento de visão geral
 ```
 
 ---
 
-## 1. ⚖️ Processo Interno: Tribunal Antifraude B2B (`processo_interno/`)
+## 🌟 Principais Recursos
 
-Pipeline multiagente adversarial para auditoria, saneamento e julgamento de pedidos comerciais de alto valor:
-
-* **Agentes:** Acusação (Risco), Defesa (Comercial), Perito da Realidade (Fact-Checker) e Juiz (Instrução e Sentença).
-* **Diretriz de Decisão:** Priorização de decisão binária conclusiva (*Fraude: 53%-100%* vs. *Não Fraude: 0%-47%*). Intervenção humana apenas em empate crítico (47%-53%).
-* **Como Executar:**
-  ```bash
-  # A partir da raiz do repositório:
-  python3 processo_interno/executar_pipeline.py --linha random
-
-  # Ou entrando na pasta:
-  cd processo_interno
-  python3 executar_pipeline.py --linha 0
-  ```
-* 📖 Consulte a documentação completa em [processo_interno/README.md](file:///Users/rodrigomodel/antigravity/processo_interno/README.md) e as especificações em [processo_interno/SPECS.md](file:///Users/rodrigomodel/antigravity/processo_interno/SPECS.md).
+- **🚀 100% Assíncrono e Não-Bloqueante:** Utiliza `discord.py` assíncrono com `AsyncOpenAI` e workers em background, evitando bloqueios de heartbeat no loop de eventos.
+- **🔄 Roteamento Híbrido de Modelos:** Suporte nativo ao **LM Studio** local com failover automático ou chaveamento para a **API do Google Gemini**.
+- **🧠 Memória Híbrida Inteligente:**
+  - **Relacional (SQLite):** Histórico de conversas, sanitização de contexto, lembretes e listas.
+  - **Semântica (ChromaDB):** Embeddings e busca de conhecimento persistente com coleções isoladas por usuário e canal.
+- **🔧 Function Calling (Tools):** A LLM pode consultar e executar ferramentas locais autonomamente (data/hora, pesquisa web, manipulação de PDFs, lembretes, agenda Google e listas).
+- **🎙️ Áudio e Mensagens de Voz:** Transcrição automática de áudios (.ogg, .mp3, etc.) com `faster-whisper` em português.
+- **📄 RAG e Gestão Documental:** Upload, leitura, indexação vetorial e envio sob demanda de arquivos PDF diretamente pelo Discord.
+- **📅 Google Calendar:** Consulta, adição e cancelamento de compromissos sincronizados via OAuth 2.0.
+- **⏰ Lembretes e Resumo Matinal:** Agendamento de alertas por tempo relativo ou absoluto e geração de relatórios diários (Digest).
+- **⚡ Comandos com Prefixo (`!`):** Suporte nativo a dezenas de comandos utilitários (`!ajuda`, `!ping`, `!status`, `!limpar`, `!historico`, `!modelo`, etc.).
 
 ---
 
-## 2. 🤖 Discord AI Bot & Google Calendar (`discord/`)
+## 🚀 Como Executar
 
-Assistente pessoal inteligente para o Discord integrado ao LM Studio (OpenAI API local) e serviços em nuvem:
+### 1. Pré-requisitos
+- **Python 3.10+** (utilize o ambiente virtual `.venv`)
+- **LM Studio** ativo localmente (`http://localhost:1234/v1`) ou chave configurada da **Gemini API**
+- Intent **Message Content Intent** ativada no [Discord Developer Portal](https://discord.com/developers/applications)
 
-* **Dual-Memory:** Memória imediata relacional (SQLite) + Memória semântica de longo prazo isolada por usuário (ChromaDB + Embeddings).
-* **Gestão Documental:** Recebimento, armazenamento em `discord/pdf/{user}/` e entrega de arquivos PDF físicos sob demanda.
-* **Google Calendar:** Consulta, criação e cancelamento de compromissos oficiais via OAuth 2.0.
-* **Listas Pessoais:** Gestão de listas de mercado e tarefas com marcação/ticar e limpeza de concluídos.
-* **Lembretes Agendados:** Avisos por tempo relativo (`em 15m`) ou absoluto (`09:00`) com notificação ativa no Discord via worker assíncrono.
-* **Como Executar:**
-  ```bash
-  python3 discord/chat_discord.py
-  ```
-* 📖 Consulte a documentação completa em [discord/README.md](file:///Users/rodrigomodel/antigravity/discord/README.md) e as especificações em [discord/SPECs/discord-specs.md](file:///Users/rodrigomodel/antigravity/discord/SPECs/discord-specs.md).
-
----
-
-## 🚀 Ambiente e Dependências
-
-O workspace utiliza um único ambiente virtual Python (`.venv`):
+### 2. Configuração do Ambiente
+Copie o modelo de variáveis de ambiente e preencha suas credenciais:
 ```bash
-# Ativar o ambiente virtual no terminal macOS/Linux:
-source .venv/bin/activate
+cp discord/.env.example discord/.env
 ```
+Edite `discord/.env` informando seu `DISCORD_TOKEN`, endpoint da LLM e demais integrações desejadas.
+
+### 3. Inicialização do Bot
+A partir da raiz do repositório:
+
+```bash
+# Ativar o ambiente virtual
+source .venv/bin/activate
+
+# Executar o bot
+python discord/chat_discord.py
+```
+
+---
+
+## 📚 Documentação & Especificações
+
+Para detalhes aprofundados sobre arquitetura, contratos e novos módulos:
+- 📖 [Documentação Técnica do Módulo Discord](file:///Users/rodrigomodel/antigravity/discord/README.md)
+- 🏛️ [Arquitetura Geral & Fluxos](file:///Users/rodrigomodel/antigravity/discord/SPECs/ARQUITETURA.md)
+- 🗺️ [Roadmap de Desenvolvimento](file:///Users/rodrigomodel/antigravity/discord/SPECs/ROADMAP.md)
+- 💡 [Especificações Técnicas de Módulos e Ideias](file:///Users/rodrigomodel/antigravity/discord/SPECs/README.md)
