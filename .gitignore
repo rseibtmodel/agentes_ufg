@@ -1,0 +1,22 @@
+.venv/
+__pycache__/
+*.pyc
+gemini-key.txt
+discord/chroma_db/
+discord/pdf/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+discord/discord_db/
+discord/.env
+discord/chat_memory.db
+discord/credentials.json
+discord/token.json
+*.lock
+discord/.bot.lock
+
+# Pastas ignoradas
+processo_interno/
+simulador de cbs/
