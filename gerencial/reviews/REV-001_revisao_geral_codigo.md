@@ -132,44 +132,43 @@ Além disso, a cobertura de testes automatizados é literalmente **ZERO (0%)**, 
 
 ## 📊 3. Matriz Consolidada de Débitos Técnicos por Severidade
 
-| ID | Severidade | Domínio | Arquivo(s) Afetado(s) | Resumo da Problemática | Esforço Estimado |
+| ID | Severidade | Domínio | Arquivo(s) Afetado(s) | Resumo da Problemática | Status Pós-Refatoração |
 | :--- | :---: | :---: | :--- | :--- | :---: |
-| **BUG-01** | 🔴 **Crítico** | Bloco 1 (Core) | `message_handler.py`, `database.py` | I/O síncrono de SQLite bloqueando o event loop principal | 🟡 Médio |
-| **BUG-02** | 🔴 **Crítico** | Bloco 1 (Gateway) | `message_gateway.py`, `message_handler.py` | Race condition apagando áudio temporário antes do envio Outbox | 🟡 Médio |
-| **BUG-03** | 🔴 **Crítico** | Bloco 2 (Cognição) | `discord/tools/*`, `tools/registry.py` | Violação do contrato canônico de Function Calling (`{"sucesso", "dados", "erro"}`) | 🔴 Alto |
-| **BUG-04** | 🔴 **Crítico** | Bloco 3 (Mídia) | `commands/builtins.py`, `google_calendar.py` | Chamada de rede externa Google API síncrona dentro de comando assíncrono | 🟢 Baixo |
-| **BUG-05** | 🔴 **Crítico** | Qualidade/QA | Repositório Raiz (`tests/`) | Ausência absoluta de cobertura de testes automatizados (0%) | 🔴 Alto |
-| **BUG-06** | 🟡 **Médio** | Bloco 1 (Gateway) | `commands/registry.py` | `CommandContext.reply()` ignorando o Outbox Gateway no 1º bloco | 🟢 Baixo |
-| **BUG-07** | 🟡 **Médio** | Bloco 1 (Contexto) | `context_manager.py` | Falta de import de `Any` gerando `NameError` em introspecção | 🟢 Baixo |
-| **BUG-08** | 🟡 **Médio** | Bloco 1 (Contexto) | `context_manager.py` | Dicionários globais de pendências indexados por `user_name` | 🟡 Médio |
-| **BUG-09** | 🟡 **Médio** | Bloco 2 (Cognição) | `llm_client.py` | Serialização de tool com `str()` (repr Python) em vez de JSON estrito | 🟢 Baixo |
-| **BUG-10** | 🟡 **Médio** | Bloco 2 (RAG) | `vector_db.py`, `topic_manager.py` | Queries síncronas de ChromaDB no event loop assíncrono | 🟡 Médio |
-| **BUG-11** | 🟡 **Médio** | Bloco 3 (Workers) | `reminder_manager.py` | `sqlite3.connect` com timeout curto de 5s e sem `_get_connection` | 🟢 Baixo |
-| **BUG-12** | 🟡 **Médio** | Bloco 3 (Estrutura) | `commands/builtins.py` | Monolito de 2.231 linhas misturando todos os comandos | 🔴 Alto |
-| **BUG-13** | 🟢 **Baixo** | Bloco 1 (Core) | `chat_discord.py` | `init_db()` executado no top-level de importação do módulo | 🟢 Baixo |
-| **BUG-14** | 🟢 **Baixo** | Bloco 3 (Mídia) | `audio_manager.py` | `_model_lock = asyncio.Lock()` não utilizado e instanciado em top-level | 🟢 Baixo |
+| **BUG-01** | 🔴 **Crítico** | Bloco 1 (Core) | `message_handler.py`, `database.py` | I/O síncrono de SQLite bloqueando o event loop principal | ✅ **Sanado (Onda 2 - OS-004)** |
+| **BUG-02** | 🔴 **Crítico** | Bloco 1 (Gateway) | `message_gateway.py`, `message_handler.py` | Race condition apagando áudio temporário antes do envio Outbox | ✅ **Sanado (Onda 1 - OS-003)** |
+| **BUG-03** | 🔴 **Crítico** | Bloco 2 (Cognição) | `discord/tools/*`, `tools/registry.py` | Violação do contrato canônico de Function Calling (`{"sucesso", "dados", "erro"}`) | ✅ **Sanado (Onda 2 - OS-004)** |
+| **BUG-04** | 🔴 **Crítico** | Bloco 3 (Mídia) | `commands/builtins.py`, `google_calendar.py` | Chamada de rede externa Google API síncrona dentro de comando assíncrono | ✅ **Sanado (Onda 1 - OS-003)** |
+| **BUG-05** | 🔴 **Crítico** | Qualidade/QA | Repositório Raiz (`tests/`) | Ausência absoluta de cobertura de testes automatizados (0%) | ✅ **Sanado (Onda 3 - OS-005)** |
+| **BUG-06** | 🟡 **Médio** | Bloco 1 (Gateway) | `commands/registry.py` | `CommandContext.reply()` ignorando o Outbox Gateway no 1º bloco | ✅ **Sanado (Onda 1 - OS-003)** |
+| **BUG-07** | 🟡 **Médio** | Bloco 1 (Contexto) | `context_manager.py` | Falta de import de `Any` gerando `NameError` em introspecção | ✅ **Sanado (Onda 1 - OS-003)** |
+| **BUG-08** | 🟡 **Médio** | Bloco 1 (Contexto) | `context_manager.py` | Dicionários globais de pendências indexados por `user_name` | ✅ **Sanado (Onda 1 - OS-003)** |
+| **BUG-09** | 🟡 **Médio** | Bloco 2 (Cognição) | `llm_client.py` | Serialização de tool com `str()` (repr Python) em vez de JSON estrito | ✅ **Sanado (Onda 2 - OS-004)** |
+| **BUG-10** | 🟡 **Médio** | Bloco 2 (RAG) | `vector_db.py`, `topic_manager.py`, `pdf_manager.py` | Queries síncronas de ChromaDB no event loop assíncrono | ✅ **Sanado (Onda 2 - OS-004)** |
+| **BUG-11** | 🟡 **Médio** | Bloco 3 (Workers) | `reminder_manager.py` | `sqlite3.connect` com timeout curto de 5s e sem `_get_connection` | ✅ **Sanado (Onda 1 - OS-003)** |
+| **BUG-12** | 🟡 **Médio** | Bloco 3 (Estrutura) | `commands/builtins.py` | Monolito de 2.231 linhas misturando todos os comandos | ✅ **Sanado (Onda 3 - OS-005)** |
+| **BUG-13** | 🟢 **Baixo** | Bloco 1 (Core) | `chat_discord.py` | `init_db()` executado no top-level de importação do módulo | 🛡️ **Mitigado / Monitorado** |
+| **BUG-14** | 🟢 **Baixo** | Bloco 3 (Mídia) | `audio_manager.py` | `_model_lock = asyncio.Lock()` não utilizado e instanciado em top-level | 🛡️ **Mitigado / Monitorado** |
 
 ---
 
-## 🛠️ 4. Recomendações e Plano Cirúrgico de Refatoração
+## 🛠️ 4. Histórico de Execução & Homologação das 3 Ondas
 
-Para sanar essas fragilidades sem risco de quebrar o bot em produção, o **`/review`** e o **`/architect`** recomendam estruturar a correção em **3 Ondas Operacionais**:
+Todas as 3 Ondas de Refatoração planejadas foram implementadas, testadas e formalizadas com commits de alta integridade:
 
-### 🌊 Onda 1: Estabilização Emergencial (Hotfixes de Concorrência & Gateway)
-1. **Corrigir `BUG-02` (Gateway & Tempfile):** Mudar o ciclo de vida do arquivo de áudio para que o Gateway assuma o cleanup ou leia os bytes via `io.BytesIO`.
-2. **Corrigir `BUG-07` e `BUG-08` (`context_manager.py`):** Importar `Any`, adicionar `from __future__ import annotations` e isolar pendências por `user_id`.
-3. **Corrigir `BUG-06` (`commands/registry.py`):** Ranquear o despacho de `CommandContext.reply()` 100% pelo `message_gateway`.
-4. **Corrigir `BUG-04` (Google Calendar):** Envolver `listar_compromissos` em `asyncio.to_thread()` em `builtins.py`.
-5. **Corrigir `BUG-11` (`reminder_manager.py`):** Usar `_get_connection()` com timeout de 30s.
-
-### 🌊 Onda 2: Blindagem do Event Loop & Contrato de Tools
-1. **Corrigir `BUG-01` (I/O Síncrono de SQLite):** Envolver acessos a SQLite em `message_handler.py` com `await asyncio.to_thread()`.
-2. **Corrigir `BUG-03` e `BUG-09` (Contrato Canônico de Tools & JSON):** Padronizar o retorno das ferramentas para o schema canônico `{"sucesso", "dados", "erro"}` e serializar o histórico com `json.dumps()`.
-3. **Corrigir `BUG-10` (ChromaDB Assíncrono):** Proteger queries pesadas do ChromaDB com `asyncio.to_thread()`.
-
-### 🌊 Onda 3: Suíte de Testes & Modularização
-1. **Corrigir `BUG-05` (Infraestrutura de Testes):** Criar `tests/` com testes assíncronos (`test_context.py`, `test_gateway.py`, `test_tools.py`, `test_database.py`).
-2. **Corrigir `BUG-12` (Modularização de Comandos):** Desmembrar `commands/builtins.py` em comandos temáticos desacoplados.
+- 🌊 **Onda 1 (OS-003, commit `a9929c9`):** Estabilização Emergencial.
+  - Correção do `delete_after_send` no Gateway (BUG-02).
+  - Tipagem e isolamento por `user_id` em `context_manager.py` (BUG-07, BUG-08).
+  - 100% dos despachos de comandos via Message Gateway (BUG-06).
+  - Isolamento não-bloqueante da API do Google Calendar (BUG-04).
+  - Conexões com timeout de 30s e WAL no `reminder_manager.py` (BUG-11).
+- 🌊 **Onda 2 (OS-004, commit `39ab851`):** Blindagem do Event Loop e Function Calling.
+  - I/O síncrono de SQLite em `message_handler.py` encapsulado com `asyncio.to_thread` (BUG-01).
+  - Despachante `ToolRegistry.execute()` e 42 ferramentas adaptadas ao contrato canônico `{"sucesso", "dados", "erro"}` (BUG-03).
+  - Serialização JSON estrita na role `tool` em `llm_client.py` (BUG-09).
+  - I/O de ChromaDB em `vector_db.py`, `topic_manager.py` e `pdf_manager.py` protegido com `to_thread` (BUG-10).
+- 🌊 **Onda 3 (OS-005, commit `9047c68`):** Modularização e Suíte de Testes.
+  - Fatiamento de `commands/builtins.py` (2.232 linhas) em 6 submódulos especializados em `commands/` (BUG-12).
+  - Criação da suíte formal de testes assíncronos em `tests/` com 15 testes executando em 0.030s (BUG-05).
 
 ---
 
