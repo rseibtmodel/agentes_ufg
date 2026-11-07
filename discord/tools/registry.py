@@ -161,10 +161,23 @@ class ToolRegistry:
                 # Executa funções síncronas em thread dedicada para preservar o heartbeat do Discord
                 resultado = await asyncio.to_thread(tool.func, **args_sanitizados)
 
-            # Normalização rigorosa para o contrato canônico
+            # Normalização rigorosa para o contrato canônico: {"sucesso": bool, "dados": Any, "erro": Optional[str]}
             if isinstance(resultado, dict):
-                if "sucesso" in resultado:
-                    return json.dumps(resultado, ensure_ascii=False, indent=2)
+                if "sucesso" in resultado and ("dados" in resultado or "erro" in resultado):
+                    return json.dumps({
+                        "sucesso": bool(resultado.get("sucesso", False)),
+                        "dados": resultado.get("dados"),
+                        "erro": resultado.get("erro"),
+                    }, ensure_ascii=False, indent=2)
+                elif "sucesso" in resultado:
+                    sucesso = bool(resultado.get("sucesso", False))
+                    dados = {k: v for k, v in resultado.items() if k != "sucesso"}
+                    erro = dados.get("mensagem") if not sucesso else None
+                    return json.dumps({
+                        "sucesso": sucesso,
+                        "dados": dados,
+                        "erro": erro,
+                    }, ensure_ascii=False, indent=2)
                 return json.dumps({
                     "sucesso": True,
                     "dados": resultado,

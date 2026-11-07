@@ -493,11 +493,15 @@ class MessageGateway:
         logger.info("🧹 Message Gateway limpo (%d itens descartados).", count)
         return count
 
+    # Alias de compatibilidade
+    clear_queue = clear
+
     def get_status(self) -> Dict[str, Any]:
         """Retorna telemetria de funcionamento do barramento."""
         return {
             "enabled": self.enabled,
             "paused": self._is_paused,
+            "is_paused": self._is_paused,
             "queue_size": self._queue.qsize(),
             "active_circuit_breakers": len(self._circuit_breakers),
             "stats": self.stats,
