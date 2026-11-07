@@ -22,3 +22,7 @@ chat.md
 # Pastas ignoradas
 processo_interno/
 simulador de cbs/
+
+# Relatórios gerados em runtime
+discord/relatorios_pesquisa/*.md
+!discord/relatorios_pesquisa/.gitkeep

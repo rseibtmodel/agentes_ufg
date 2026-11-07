@@ -674,3 +674,4 @@ async def cmd_gateway(ctx: CommandContext) -> None:
         return
 
     await ctx.reply(f"❓ Subcomando desconhecido. Use: `{COMMAND_PREFIX}gateway [status|pausar|retomar|limpar]`")
+

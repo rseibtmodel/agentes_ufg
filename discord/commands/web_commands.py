@@ -119,3 +119,130 @@ async def cmd_ler(ctx: CommandContext) -> None:
         except Exception as e:
             await msg_status.edit(content=f"⚠️ Falha durante a leitura da página: {str(e)}")
 
+
+@register_command(
+    name="pesquisa_profunda",
+    description="Executa uma investigação profunda na web (Deep Research), cruzando múltiplas fontes e gerando um dossiê executivo com citações.",
+    usage=f"{COMMAND_PREFIX}pesquisa_profunda <tema ou pergunta complexa>",
+    aliases=["pesquisa", "deepresearch", "investigar", "dossie"],
+)
+async def cmd_pesquisa_profunda(ctx: CommandContext) -> None:
+    """Executa a pesquisa profunda autônoma e anexa o dossiê técnico."""
+    import discord
+    from pathlib import Path
+    from deep_research_manager import deep_research_manager
+
+    if not ctx.args:
+        linhas = [
+            "🧭 **AGENTE DE PESQUISA PROFUNDA (DEEP RESEARCH — IDEA-17)**",
+            f"Uso: `{COMMAND_PREFIX}pesquisa_profunda <tema complexo>`\n",
+            "**Como funciona:**",
+            "1. 🧠 Decompõe seu tema em 3 a 4 eixos de investigação",
+            "2. 🔍 Varre a web em paralelo e lê 8 a 12 artigos em profundidade",
+            "3. 📑 Cruza dados, elimina contradições e redige um Dossiê Técnico",
+            "4. 📥 Entrega o resumo no chat e anexa o arquivo Markdown com referências\n",
+            "**Exemplos de temas:**",
+            f"• `{COMMAND_PREFIX}pesquisa Reforma tributária CBS e impactos em SaaS no Brasil`",
+            f"• `{COMMAND_PREFIX}pesquisa Comparativo técnico Mac Studio M2 Max vs instâncias H100 para LLM local`",
+            f"• `{COMMAND_PREFIX}pesquisas` — Lista dossiês elaborados anteriormente"
+        ]
+        await ctx.reply("\n".join(linhas))
+        return
+
+    tema = " ".join(ctx.args).strip()
+    msg_status = await ctx.reply(f"🧭 **Iniciando Deep Research:** *\"{tema}\"*\n*Aguarde, este processo realiza varredura e cruzamento de múltiplas fontes...*")
+
+    # Callback para atualização em tempo real no Discord
+    async def atualizar_progresso(status_texto: str) -> None:
+        try:
+            if hasattr(msg_status, "edit"):
+                await msg_status.edit(content=f"{status_texto}\n\n📌 **Tema:** *\"{tema}\"*")
+        except Exception:
+            pass
+
+    async with ctx.channel.typing():
+        try:
+            resultado = await deep_research_manager.executar_pesquisa_completa(
+                tema=tema,
+                user_id=str(ctx.author.id),
+                progress_callback=atualizar_progresso,
+            )
+
+            if not resultado.get("sucesso"):
+                msg_erro = resultado.get("erro", "Falha na elaboração da pesquisa.")
+                await msg_status.edit(content=f"⚠️ {msg_erro}")
+                return
+
+            dados = resultado["dados"]
+            caminho_arq = Path(dados["file_path"])
+
+            corpo_resposta = (
+                f"📑 **DOSSIÊ TÉCNICO CONCLUÍDO (ID: `{dados['report_id']}`)**\n"
+                f"• **Tema:** *{dados['tema']}*\n"
+                f"• **Fontes Analisadas:** `{dados['total_fontes']}` artigos na web\n\n"
+                f"**Sumário Executivo:**\n"
+                f"{dados['resumo_executivo']}\n\n"
+                f"📥 *O dossiê analítico completo com todas as referências foi anexado abaixo:*"
+            )
+
+            if caminho_arq.exists():
+                arquivo_discord = discord.File(str(caminho_arq), filename=caminho_arq.name)
+                await ctx.channel.send(content=corpo_resposta, file=arquivo_discord)
+            else:
+                await ctx.reply(corpo_resposta)
+
+        except Exception as e:
+            await msg_status.edit(content=f"⚠️ Falha inesperada durante o Deep Research: {str(e)}")
+
+
+@register_command(
+    name="pesquisas",
+    description="Lista seus relatórios e dossiês de pesquisa profunda já concluídos.",
+    usage=f"{COMMAND_PREFIX}pesquisas",
+    aliases=["meus_dossies", "relatorios_pesquisa"],
+)
+async def cmd_pesquisas(ctx: CommandContext) -> None:
+    """Lista pesquisas anteriores do usuário com metadados."""
+    import discord
+    from pathlib import Path
+    from deep_research_manager import deep_research_manager
+
+    # Se passou o ID de um relatório para baixar (ex: !pesquisas baixar abc12345)
+    if ctx.args and ctx.args[0].lower() in ("baixar", "obter", "ver", "get") and len(ctx.args) > 1:
+        rid = ctx.args[1].strip()
+        rel = deep_research_manager.obter_relatorio(rid)
+        if not rel:
+            await ctx.reply(f"❌ Relatório `{rid}` não encontrado.")
+            return
+
+        caminho_arq = Path(rel["file_path"])
+        if caminho_arq.exists():
+            arq_discord = discord.File(str(caminho_arq), filename=caminho_arq.name)
+            await ctx.channel.send(
+                content=f"📥 **Aqui está o Dossiê solicitado:** `{rel['topic']}`",
+                file=arq_discord,
+            )
+        else:
+            await ctx.reply(f"⚠️ O arquivo físico do relatório `{rid}` não foi localizado no servidor.")
+        return
+
+    relatorios = deep_research_manager.listar_relatorios(str(ctx.author.id), limite=10)
+    if not relatorios:
+        await ctx.reply(
+            f"📭 Você ainda não possui nenhum relatório de pesquisa profunda.\n"
+            f"Para iniciar uma nova investigação, digite: `{COMMAND_PREFIX}pesquisa_profunda <tema>`"
+        )
+        return
+
+    linhas = [
+        f"📚 **SEUS DOSSIÊS DE PESQUISA PROFUNDA ({len(relatorios)}):**\n",
+    ]
+    for idx, r in enumerate(relatorios, start=1):
+        linhas.append(
+            f"{idx}. `[{r['id']}]` **{r['topic']}** ({r['total_sources']} fontes consultadas)\n"
+            f"   📅 *Criado em:* `{r['created_at']}`\n"
+            f"   💡 *Para baixar:* `{COMMAND_PREFIX}pesquisas baixar {r['id']}`\n"
+        )
+
+    await ctx.reply("\n".join(linhas))
+

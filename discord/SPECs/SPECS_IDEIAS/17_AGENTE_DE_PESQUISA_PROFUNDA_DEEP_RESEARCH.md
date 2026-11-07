@@ -1,7 +1,7 @@
 # Especificação de Ideia de Módulo: Agente Autônomo de Pesquisa Profunda (Deep Research)
 
 **Código da Proposta:** `IDEA-17`  
-**Status:** Proposto / Refinado via `idea_generator` (Prioridade Alta )  
+**Status:** Implementado (OS-006)  
 **Impacto:** Conduz investigações exaustivas na internet sobre temas complexos, cruzando múltiplas fontes para gerar dossiês executivos completos e estruturados.
 
 ---

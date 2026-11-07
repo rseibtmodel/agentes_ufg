@@ -17,6 +17,7 @@ import tools.reminder_tools  # noqa: F401
 import tools.settings_tools  # noqa: F401
 import tools.digest_tools  # noqa: F401
 import tools.web_tools  # noqa: F401
+import tools.research_tools  # noqa: F401
 import tools.prompt_tools  # noqa: F401
 import tools.topic_tools  # noqa: F401
 import tools.persona_tools  # noqa: F401
