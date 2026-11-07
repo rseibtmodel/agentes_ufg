@@ -1,7 +1,7 @@
 # Especificações Gerais do Sistema — Discord AI Bot (Antigravity)
 
-**Versão do Sistema:** 3.5.0  
-**Data da Revisão:** 20 de Outubro de 2026  
+**Versão do Sistema:** 3.6.0  
+**Data da Revisão:** 07 de Novembro de 2026  
 **Status do Projeto:** Ativo / Produção Estável  
 **Stack Principal:** Python 3.10+, Discord.py 2.3+, AsyncOpenAI, LM Studio (LLM + Embeddings), SQLite3 (WAL), ChromaDB, Faster-Whisper, Edge-TTS, Open-Meteo API, PyMuPDF (fitz).
 
@@ -30,23 +30,31 @@ O **Discord AI Bot (Antigravity)** é um assistente conversacional autônomo e m
    Agendamento assíncrono em segundo plano capaz de consolidar previsão meteorológica em tempo real, Google Calendar, lembretes e listas pendentes em um briefing matinal entregue pontualmente em texto e áudio narrado.
 8. **Ecossistema de Livros e Leitura Inteligente (Book RAG):**
    Ingestão leve de PDFs no upload (autor, páginas, sumário TOC), geração de resumos hierárquicos por capítulo sob demanda e indexação vetorial dedicada no ChromaDB para conversa interativa e respostas fundamentadas com citação exata de páginas.
+9. **Governança & Ecossistema Multiagente Versionado:**
+   Orquestração sistemática via [`/gerente`](file:///Users/rodrigomodel/antigravity/.agents/skills/agent_manager/SKILL.md) e controle versionado em [`gerencial/`](file:///Users/rodrigomodel/antigravity/gerencial/), garantindo conformidade arquitetural com o [`AGENTS.md`](file:///Users/rodrigomodel/antigravity/AGENTS.md) sob a liderança irrevogável do Arquiteto-Chefe.
 
 ---
 
 ## 2. Mapa Geral da Documentação de Especificações
 
-Assim como o comando `!ajuda` organiza a experiência do usuário em módulos temáticos, as especificações técnicas foram estruturadas em documentos dedicados divididos entre **Módulos Visíveis** (funcionalidades com interação direta no chat), **Módulos Internos** (camadas de infraestrutura e pipelines não visíveis ao usuário final), **Arquitetura & Roadmap** e **Ideias Futuras**.
+Assim como o comando `!ajuda` organiza a experiência do usuário em módulos temáticos, as especificações técnicas foram estruturadas em documentos dedicados divididos entre **Módulos Visíveis** (15 funcionalidades com interface direta no chat), **Módulos Internos** (7 camadas de infraestrutura e pipelines), **Arquitetura & Roadmap**, **Ideias Futuras** e **Governança Gerencial**.
 
 ```
-discord/
-├── SPECs/
-│   ├── README.md                      # [Este documento] Visão geral e índice mestre
-│   ├── ARQUITETURA.md                 # Diagramas, fluxo de dados ponta a ponta e segurança
-│   ├── ROADMAP.md                     # Histórico de versões entregues e planos futuros
-│   │
-│   ├── arquitetura/                   # Diagramas visuais e ilustrações da arquitetura
-│   │
-│   ├── modulos_visiveis/              # Especificações das funcionalidades com interface de chat
+antigravity/
+├── AGENTS.md                          # Roster & Single Source of Truth do ecossistema multiagente
+├── gerencial/                         # Governança e controle versionado (OS, revisões, auditorias)
+│   ├── ordem_servico/                 # Ordens de serviço numeradas (OS-NNN)
+│   ├── auditorias/                    # Laudos periciais e auditorias documentais (AUD-NNN)
+│   └── reviews/                       # Revisões de código assíncrono (REV-NNN)
+├── discord/
+│   ├── SPECs/
+│   │   ├── README.md                  # [Este documento] Visão geral e índice mestre
+│   │   ├── ARQUITETURA.md             # Diagramas, fluxo de dados ponta a ponta e camadas (1 a 9)
+│   │   ├── ROADMAP.md                 # Histórico de versões entregues (v1.0 a v3.6) e planos
+│   │   │
+│   │   ├── arquitetura/               # Diagramas visuais e ilustrações da arquitetura
+│   │   │
+│   │   ├── modulos_visiveis/          # Especificações das funcionalidades com interface de chat (15 módulos)
 │   │   ├── 01_GERAL_E_DIAGNOSTICO.md  # !ping, !status, !hora, !historico, !limpar, !ajuda
 │   │   ├── 02_GOOGLE_CALENDAR.md      # !agenda, !agendar, !desmarcar e tools da agenda Google
 │   │   ├── 03_LISTAS_E_MERCADO.md     # !lista, !listas e tools de compras, tarefas e itens

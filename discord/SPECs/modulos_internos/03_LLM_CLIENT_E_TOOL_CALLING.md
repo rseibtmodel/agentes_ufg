@@ -112,3 +112,19 @@ else:
     args_sanitizados = args_dict
 ```
 Isso impede que a execução falhe com `TypeError: func() got an unexpected keyword argument` e garante que a ferramenta execute perfeitamente.
+
+### 3.2 Contrato Canônico de Retorno das Ferramentas
+
+Todas as funções registradas como ferramentas de Function Calling (`@register_tool`) devem retornar compulsoriamente uma estrutura tipada em formato de dicionário padronizado:
+
+```python
+{
+    "sucesso": bool,            # True se a operação ocorreu com êxito; False caso contrário
+    "dados": Any,               # Payload estruturado com os dados retornados (dict, list, str)
+    "erro": Optional[str]       # Mensagem descritiva de erro ou None em caso de sucesso
+}
+```
+
+**Benefícios Arquiteturais:**
+1. **Consistência Cognitiva para a LLM:** O modelo recebe sempre a mesma convenção sintática, facilitando a interpretação determinística de falhas e sucessos.
+2. **Tratamento Defensivo:** Erros de infraestrutura, validação ou APIs externas nunca explodem exceções não tratadas no loop assíncrono; são encapsulados em `{"sucesso": False, "erro": "...", "dados": None}` para que a LLM explique o ocorrido com naturalidade ao usuário.

@@ -1,7 +1,7 @@
 # Arquitetura do Sistema — Discord AI Bot (Antigravity)
 
-**Versão da Arquitetura:** 3.5.0  
-**Data da Revisão:** 22 de Outubro de 2026  
+**Versão da Arquitetura:** 3.6.0  
+**Data da Revisão:** 07 de Novembro de 2026  
 **Status:** Aprovado / Em Produção Estável  
 
 ---
@@ -10,7 +10,7 @@
 
 A arquitetura do **Discord AI Bot** segue o modelo **Event-Driven Assíncrono com Processamento Modular Desacoplado, Memória Híbrida e Barramento Centralizado de Saída (Outbox Gateway)**. 
 
-O sistema é dividido em 8 camadas fundamentais:
+O sistema é dividido em 9 camadas fundamentais:
 
 1. **Camada de Ingestão e Gateway (Discord.py):** Recebe eventos WebSocket da API do Discord Gateway (`on_message`, `on_ready`, `setup_hook`), efetua validação de instância única por lockfile atômico (`.bot.lock`) e despacha mensagens para o orquestrador central.
 2. **Camada de Percepção Multimodal (STT & Ingestão Documental):**
@@ -37,6 +37,9 @@ O sistema é dividido em 8 camadas fundamentais:
    - Fila prioritária Dual-Tier (Fast-Path < 100ms para chat e Leaky Bucket para workers em background).
    - Deduplicação inteligente por hash SHA-256 (janela deslizante de 60s) e Circuit Breaker contra rajadas.
    - Síntese neural de voz com `edge-tts` (`pt-BR-FranciscaNeural`) e exclusão imediata de áudios temporários.
+9. **Camada de Governança Multiagente & Controle Versionado (`.agents/`, `AGENTS.md` e `gerencial/`):**
+   - Orquestração centralizada sob o `Agent Manager` (`/gerente`), mediando o ecossistema de 14 especialistas com emissão de Ordens de Serviço formais (`gerencial/ordem_servico/OS-NNN`), revisões técnicas (`gerencial/reviews/REV-NNN`), laudos periciais (`gerencial/auditorias/AUD-NNN`) e síntese criativa (`alquimista_ideias/`).
+   - Garantia da soberania absoluta do Arquiteto-Chefe humano como autoridade técnica definitiva do projeto.
 
 ---
 

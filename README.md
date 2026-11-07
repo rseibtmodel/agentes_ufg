@@ -8,7 +8,16 @@ Assistente conversacional inteligente e multiagente para o Discord, construído 
 
 ```text
 antigravity/
-├── .agents/                 # Catálogo de Skills e Agentes especializados
+├── .agents/                 # Submódulo Git: Catálogo de Skills e Agentes Especialistas
+├── AGENTS.md                # Roster & Single Source of Truth do ecossistema multiagente
+├── gerencial/               # Governança & Controle Versionado
+│   ├── ordem_servico/       # Ordens de serviço numeradas (OS-NNN)
+│   ├── auditorias/          # Laudos periciais e auditorias documentais (AUD-NNN)
+│   ├── reviews/             # Laudos de revisão técnica de código assíncrono (REV-NNN)
+│   ├── teses/               # Avaliações de impacto e teses de valor
+│   ├── brainstorms/         # Dossiês de debates e ideação multiagente
+│   └── agentes/             # Histórico de evolução e reciclagem dos agentes
+├── alquimista_ideias/       # Repositório canônico de síntese de ideias (JSON estrito)
 ├── discord/                 # Código-fonte principal do bot Discord
 │   ├── chat_discord.py      # Ponto de entrada do Bot no Discord Gateway
 │   ├── config.py            # Configuração centralizada e variáveis de ambiente
@@ -79,6 +88,20 @@ source .venv/bin/activate
 # Executar o bot
 python discord/chat_discord.py
 ```
+
+---
+
+## 👥 Ecossistema Multiagente & Governança
+
+O desenvolvimento, manutenção e evolução contínua deste projeto contam com um ecossistema multiagente especializado, orquestrado sob a soberania absoluta do Arquiteto-Chefe (usuário):
+
+- 🛠️ **`/gerente` (`agent_manager`):** Orquestrador estratégico do ecossistema, guardião do [`AGENTS.md`](file:///Users/rodrigomodel/antigravity/AGENTS.md) e despachante de Ordens de Serviço (`gerencial/ordem_servico/`).
+- 🏛️ **`/architect` (`architect`):** Thought Partner de arquitetura assíncrona, ADRs, trade-offs e Tool RAG.
+- 💻 **`/coder` (`coder`):** Braço de implementação prática em Python assíncrono e `discord.py` (comandos, tools e managers).
+- 🤖 **`/review` (`review`):** Tech Lead auditor para aniquilação de bloqueios de event loop, race conditions e desvios de Clean Code.
+- 🧪 **`/qa` (`qa`):** Engenharia de testes automatizados, estresse de carga e concorrência no SQLite WAL.
+- 📚 **`/doc_master` (`doc_master`):** Guardião da documentação, integridade de `discord/SPECs/` e laudos periciais.
+- 🌪️ **Pipeline de Inovação Dialética:** [`/brainstorm`](file:///Users/rodrigomodel/antigravity/.agents/skills/brainstorm/SKILL.md), [`/oraculo`](file:///Users/rodrigomodel/antigravity/.agents/skills/oraculo/SKILL.md), [`/hacker`](file:///Users/rodrigomodel/antigravity/.agents/skills/hacker/SKILL.md), [`/critic`](file:///Users/rodrigomodel/antigravity/.agents/skills/critic/SKILL.md), [`/impact`](file:///Users/rodrigomodel/antigravity/.agents/skills/impact/SKILL.md) e [`/alquimista`](file:///Users/rodrigomodel/antigravity/.agents/skills/alquimista/SKILL.md).
 
 ---
 

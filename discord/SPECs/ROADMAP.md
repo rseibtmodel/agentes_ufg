@@ -1,7 +1,7 @@
 # Roadmap de Desenvolvimento — Discord AI Bot (Antigravity)
 
-**Versão Atual:** 3.5.0  
-**Data:** 20 de Outubro de 2026  
+**Versão Atual:** 3.6.0  
+**Data:** 07 de Novembro de 2026  
 **Status do Roadmap:** Em Evolução Contínua  
 
 ---
@@ -25,6 +25,7 @@ timeline
         v2.8 (Pesquisa Web & Browsing) : DuckDuckGo Search em Tempo Real : Extração Limpa de Artigos : Comandos !buscar e !ler : Tools para IA
         v3.0 (Anti-Spam & UI Interativa) : Gateway Unificado Outbox [IDEA-24] : Buttons, Menus & Modals [IDEA-08]
         v3.5 (Conhecimento Isolado & Especialistas) : Prompt Hub & Presets [IDEA-20] : Knowledge Hub & RAG por Canal [IDEA-25] : Personas & Overrides [IDEA-26]
+        v3.6 (Governança Multiagente) : Roster 14 Agentes : Agent Manager /gerente : Ordens de Serviço : Auditorias Formais
     section Planejado
         v4.0 (Execução & Sandbox) : Sandbox Python (Análise de Dados e Gráficos) : YouTube RAG : Conectores
         v5.0 (Visão & Voz ao Vivo) : Vision LLM (OCR e Imagens) : Voice Channel
@@ -131,6 +132,14 @@ timeline
   - Aplicação com 1 clique de qualquer preset da Central de Prompts (IDEA-20) direto ao canal (`!persona canal aplicar cfo`).
   - Comandos dedicados: `!persona canal [ver|aplicar|temp|modelo|reset]`.
   - Tools para LLM: `consultar_persona_canal`, `configurar_persona_canal`, `aplicar_preset_persona_canal`.
+
+### ✅ Versão 3.6.0 — Integração do Ecossistema Multiagente Oficial e Governança Gerencial (Novembro/2026)
+- **Submódulo Git Oficial de Agentes (`.agents`):** Integração desacoplada do catálogo de skills e regras multiagente via Git submodule em branch dedicada (`project/antigravity-discord-bot`).
+- **Roster & Governança Soberana (`AGENTS.md`):** Formalização do ecossistema de 14 especialistas ativos divididos em 3 camadas (Engenharia & Produção, Inovação Dialética, Bypasses & Inteligência Forense) com soberania irrevogável do Arquiteto-Chefe humano.
+- **Orquestração Estratégica via Agent Manager (`/gerente`):** Despacho de Ordens de Serviço formais e sequenciais persistidas compulsoriamente em `gerencial/ordem_servico/OS-{NNN}_{slug}.md`.
+- **Rito de Auditorias Documentais & Laudos Periciais (`gerencial/auditorias/`):** Homologação pericial de aderência documental com laudos estruturados (`AUD-001`), semáforo de risco e checklist de rastreabilidade.
+- **Controle Versionado do Ciclo de Vida dos Agentes (`gerencial/`):** Pastas de controle para histórico de evolução (`agentes/`), backlog de novos especialistas (`novos_agentes/`), auditorias (`auditorias/`), revisões técnicas (`reviews/`), teses (`teses/`) e transcrições completas de ideação (`brainstorms/`).
+- **Repositório Canônico de Convergência de Ideias (`alquimista_ideias/`):** Persistência compulsória em JSON estrito das ideias sintetizadas pelo Alquimista (`ouro/`, `solidas/`, `medianas/`, `autopsias/`).
 
 ---
 
