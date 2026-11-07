@@ -8,6 +8,7 @@ Responsável por:
 4. Recuperar memórias passadas semanticamente relevantes para enriquecer prompts futuros (RAG).
 """
 
+import asyncio
 from datetime import datetime
 import logging
 from pathlib import Path
@@ -103,7 +104,6 @@ async def salvar_memoria_vetorial(
         logger.info("Memória vetorial não persistida devido à indisponibilidade de embedding.")
         return None
 
-    colecao = obter_colecao_usuario(usuario)
     doc_id = str(uuid.uuid4())
     timestamp = datetime.now().isoformat()
 
@@ -116,16 +116,21 @@ async def salvar_memoria_vetorial(
         for k, v in metadata_extra.items():
             metadata[k] = str(v)
 
-    try:
+    def _adicionar_sync() -> str:
+        colecao = obter_colecao_usuario(usuario)
         colecao.add(
             ids=[doc_id],
             embeddings=[vetor],
             documents=[texto],
             metadatas=[metadata],
         )
+        return colecao.name
+
+    try:
+        col_name = await asyncio.to_thread(_adicionar_sync)
         logger.info(
             "Memória vetorial gravada na coleção '%s' (role=%s, doc_id=%s)",
-            colecao.name,
+            col_name,
             role,
             doc_id,
         )
@@ -145,15 +150,15 @@ async def buscar_memorias_relevantes(
     if not texto_query:
         return []
 
-    colecao = obter_colecao_usuario(usuario)
-    if colecao.count() == 0:
-        return []
-
     vetor_query = await gerar_embedding(texto_query)
     if not vetor_query:
         return []
 
-    try:
+    def _buscar_sync() -> List[Dict[str, Any]]:
+        colecao = obter_colecao_usuario(usuario)
+        if colecao.count() == 0:
+            return []
+
         limite = min(top_k, colecao.count())
         resultados = colecao.query(
             query_embeddings=[vetor_query],
@@ -177,6 +182,9 @@ async def buscar_memorias_relevantes(
             })
 
         return memorias
+
+    try:
+        return await asyncio.to_thread(_buscar_sync)
     except Exception as e:
         logger.warning("Erro na consulta vetorial no ChromaDB: %s", e)
         return []
@@ -256,7 +264,7 @@ async def salvar_nota_vetorial(
             elif isinstance(v, (list, tuple)):
                 meta[k] = ", ".join(str(item) for item in v)
 
-    try:
+    def _salvar_nota_sync() -> None:
         colecao = obter_colecao_topico(channel_id)
         colecao.upsert(
             ids=[str(note_id)],
@@ -264,6 +272,9 @@ async def salvar_nota_vetorial(
             documents=[texto],
             metadatas=[meta],
         )
+
+    try:
+        await asyncio.to_thread(_salvar_nota_sync)
         logger.info("Nota %s vetorizada com sucesso na coleção do canal %s.", note_id, channel_id)
         return True
     except Exception as e:
@@ -281,15 +292,15 @@ async def buscar_notas_canal_vetorial(
     if not query:
         return []
 
-    colecao = obter_colecao_topico(channel_id)
-    if colecao.count() == 0:
-        return []
-
     vetor_query = await gerar_embedding(query)
     if not vetor_query:
         return []
 
-    try:
+    def _buscar_notas_sync() -> List[Dict[str, Any]]:
+        colecao = obter_colecao_topico(channel_id)
+        if colecao.count() == 0:
+            return []
+
         limite = min(top_k, colecao.count())
         resultados = colecao.query(
             query_embeddings=[vetor_query],
@@ -315,6 +326,9 @@ async def buscar_notas_canal_vetorial(
             })
 
         return notas_relevantes
+
+    try:
+        return await asyncio.to_thread(_buscar_notas_sync)
     except Exception as e:
         logger.warning("Erro na consulta vetorial RAG do canal %s: %s", channel_id, e)
         return []

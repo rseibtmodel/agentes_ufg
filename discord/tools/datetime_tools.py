@@ -7,6 +7,7 @@ utilizando o decorador `@register_tool`.
 
 from datetime import datetime
 import math
+from typing import Any, Dict
 import zoneinfo
 from tools.registry import register_tool
 
@@ -25,14 +26,26 @@ from tools.registry import register_tool
         "required": [],
     },
 )
-def obter_hora_atual(fuso_horario: str = "America/Sao_Paulo") -> str:
+def obter_hora_atual(fuso_horario: str = "America/Sao_Paulo") -> Dict[str, Any]:
     """Retorna a data e hora atual em um formato legível."""
     try:
         tz = zoneinfo.ZoneInfo(fuso_horario)
         agora = datetime.now(tz)
-        return agora.strftime("%Y-%m-%d %H:%M:%S (%Z)")
+        return {
+            "sucesso": True,
+            "dados": {
+                "fuso_horario": fuso_horario,
+                "data_hora": agora.strftime("%Y-%m-%d %H:%M:%S (%Z)"),
+                "iso": agora.isoformat(),
+            },
+            "erro": None,
+        }
     except Exception as e:
-        return f"Erro ao obter horário para o fuso '{fuso_horario}': {str(e)}"
+        return {
+            "sucesso": False,
+            "dados": None,
+            "erro": f"Erro ao obter horário para o fuso '{fuso_horario}': {str(e)}",
+        }
 
 
 @register_tool(
@@ -49,7 +62,7 @@ def obter_hora_atual(fuso_horario: str = "America/Sao_Paulo") -> str:
         "required": ["expressao"],
     },
 )
-def calcular_expressao(expressao: str) -> str:
+def calcular_expressao(expressao: str) -> Dict[str, Any]:
     """Avalia uma expressão matemática de forma segura."""
     # Ambiente restrito com funções matemáticas seguras
     safe_dict = {
@@ -68,6 +81,17 @@ def calcular_expressao(expressao: str) -> str:
     try:
         # Avaliação com builtins desativados para segurança
         resultado = eval(expressao, {"__builtins__": {}}, safe_dict)
-        return f"Resultado de '{expressao}' = {resultado}"
+        return {
+            "sucesso": True,
+            "dados": {
+                "expressao": expressao,
+                "resultado": resultado,
+            },
+            "erro": None,
+        }
     except Exception as e:
-        return f"Erro ao calcular expressão '{expressao}': {str(e)}"
+        return {
+            "sucesso": False,
+            "dados": None,
+            "erro": f"Erro ao calcular expressão '{expressao}': {str(e)}",
+        }

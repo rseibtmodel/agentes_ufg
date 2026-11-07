@@ -5,6 +5,7 @@ Permite que a LLM consulte compromissos futuros, adicione novos eventos
 e cancele/remova compromissos da agenda do usuário no Google Calendar.
 """
 
+from typing import Any, Dict
 from google_calendar import (
     adicionar_compromisso,
     listar_compromissos,
@@ -32,32 +33,29 @@ from tools.registry import register_tool
         "required": [],
     },
 )
-def tool_listar_agenda_google(dias_a_frente: int = 7, data_inicio: str = "") -> str:
-    """Executa a listagem de compromissos no Google Calendar."""
+def tool_listar_agenda_google(dias_a_frente: int = 7, data_inicio: str = "") -> Dict[str, Any]:
+    """Executa a listagem de compromissos no Google Calendar no formato canônico."""
     data_in = data_inicio if data_inicio.strip() else None
     res = listar_compromissos(dias_a_frente=dias_a_frente, data_inicio=data_in)
 
     if not res.get("sucesso"):
-        return f"Não foi possível consultar a agenda do Google: {res.get('erro')}"
+        return {
+            "sucesso": False,
+            "dados": None,
+            "erro": res.get("erro", "Não foi possível consultar a agenda do Google."),
+        }
 
     eventos = res.get("eventos", [])
-    if not eventos:
-        return (
-            f"📅 Nenhum compromisso encontrado na sua agenda Google entre "
-            f"{res.get('periodo_inicio')} e {res.get('periodo_fim')}."
-        )
-
-    linhas = [
-        f"📅 Compromissos encontrados na agenda Google ({len(eventos)} evento(s) entre {res.get('periodo_inicio')} e {res.get('periodo_fim')}):"
-    ]
-    for idx, ev in enumerate(eventos, start=1):
-        local_str = f" | Local: {ev['local']}" if ev.get("local") else ""
-        desc_str = f" | Descrição: {ev['descricao']}" if ev.get("descricao") else ""
-        linhas.append(
-            f"{idx}. **{ev['titulo']}** (Início: {ev['inicio']} | Fim: {ev['fim']}{local_str}{desc_str}) [ID: {ev['id']}]"
-        )
-
-    return "\n".join(linhas)
+    return {
+        "sucesso": True,
+        "dados": {
+            "periodo_inicio": res.get("periodo_inicio"),
+            "periodo_fim": res.get("periodo_fim"),
+            "total_eventos": len(eventos),
+            "eventos": eventos,
+        },
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -96,8 +94,8 @@ def tool_adicionar_evento_google(
     data_hora_fim: str = "",
     descricao: str = "",
     localizacao: str = "",
-) -> str:
-    """Cria um novo evento no Google Calendar."""
+) -> Dict[str, Any]:
+    """Cria um novo evento no Google Calendar no formato canônico."""
     fim = data_hora_fim if data_hora_fim.strip() else None
     res = adicionar_compromisso(
         titulo=titulo,
@@ -108,14 +106,17 @@ def tool_adicionar_evento_google(
     )
 
     if not res.get("sucesso"):
-        return f"Não foi possível agendar o compromisso no Google Calendar: {res.get('erro')}"
+        return {
+            "sucesso": False,
+            "dados": None,
+            "erro": res.get("erro", "Não foi possível agendar o compromisso no Google Calendar."),
+        }
 
-    return (
-        f"✅ Evento '{res.get('titulo')}' agendado com sucesso no Google Calendar!\n"
-        f"• Início: {res.get('inicio')}\n"
-        f"• Término: {res.get('fim')}\n"
-        f"• Link: {res.get('link')}"
-    )
+    return {
+        "sucesso": True,
+        "dados": res,
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -132,10 +133,18 @@ def tool_adicionar_evento_google(
         "required": ["termo_ou_id"],
     },
 )
-def tool_remover_evento_google(termo_ou_id: str) -> str:
-    """Cancela ou exclui um evento da agenda Google."""
+def tool_remover_evento_google(termo_ou_id: str) -> Dict[str, Any]:
+    """Cancela ou exclui um evento da agenda Google no formato canônico."""
     res = remover_compromisso(termo_ou_id=termo_ou_id)
     if not res.get("sucesso"):
-        return f"Não foi possível remover o compromisso: {res.get('erro')}"
+        return {
+            "sucesso": False,
+            "dados": None,
+            "erro": res.get("erro", "Não foi possível remover o compromisso."),
+        }
 
-    return f"🗑️ {res.get('mensagem')}"
+    return {
+        "sucesso": True,
+        "dados": res,
+        "erro": None,
+    }

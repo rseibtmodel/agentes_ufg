@@ -6,6 +6,7 @@ Permite à LLM interpretar solicitações de aviso ("me avise em 15 minutos",
 no banco para disparo automático no Discord.
 """
 
+from typing import Any, Dict
 from context_manager import (
     get_current_channel_id,
     get_current_user,
@@ -44,14 +45,18 @@ from tools.registry import register_tool
         "required": ["mensagem", "quando"],
     },
 )
-def tool_criar_lembrete(mensagem: str, quando: str) -> str:
-    """Agenda um lembrete para o usuário."""
+def tool_criar_lembrete(mensagem: str, quando: str) -> Dict[str, Any]:
+    """Agenda um lembrete para o usuário no formato canônico."""
     dt_alvo = interpretar_expressao_tempo(quando)
     if not dt_alvo:
-        return (
-            f"Erro: Não consegui interpretar o momento '{quando}'. "
-            "Tente usar expressões como 'em 15 minutos', 'em 2 horas', '09:00' ou '19/10/2026 09:00'."
-        )
+        return {
+            "sucesso": False,
+            "dados": None,
+            "erro": (
+                f"Não consegui interpretar o momento '{quando}'. "
+                "Tente usar expressões como 'em 15 minutos', 'em 2 horas', '09:00' ou '19/10/2026 09:00'."
+            ),
+        }
 
     user_id = get_current_user_id() or get_current_user()
     channel_id = get_current_channel_id()
@@ -64,27 +69,35 @@ def tool_criar_lembrete(mensagem: str, quando: str) -> str:
     )
 
     if res.get("sucesso"):
-        return res["resposta_formatada"]
-    return f"Erro: {res.get('mensagem', 'Falha ao agendar lembrete.')}"
+        return {
+            "sucesso": True,
+            "dados": res,
+            "erro": None,
+        }
+    return {
+        "sucesso": False,
+        "dados": None,
+        "erro": res.get("mensagem", "Falha ao agendar lembrete."),
+    }
 
 
 @register_tool(
     name="listar_meus_lembretes",
     description="Consulta e lista todos os lembretes pendentes já programados para o usuário atual.",
 )
-def tool_listar_meus_lembretes() -> str:
-    """Retorna os lembretes pendentes."""
+def tool_listar_meus_lembretes() -> Dict[str, Any]:
+    """Retorna os lembretes pendentes no formato canônico."""
     user_id = get_current_user_id() or get_current_user()
     lembretes = listar_lembretes_usuario(user_id, apenas_pendentes=True)
 
-    if not lembretes:
-        return "Você não tem nenhum lembrete pendente programado no momento."
-
-    linhas = ["⏰ **Seus lembretes pendentes:**"]
-    for l in lembretes:
-        linhas.append(f"• `#{l['id']}` **{l['remind_at']}**: {l['mensagem']}")
-    linhas.append("💡 *Para cancelar: peça 'cancele o lembrete #ID' ou use `!cancelar_lembrete <id>`.*")
-    return "\n".join(linhas)
+    return {
+        "sucesso": True,
+        "dados": {
+            "total_lembretes": len(lembretes),
+            "lembretes": lembretes,
+        },
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -101,10 +114,18 @@ def tool_listar_meus_lembretes() -> str:
         "required": ["lembrete_id"],
     },
 )
-def tool_cancelar_lembrete(lembrete_id: int) -> str:
-    """Cancela um lembrete."""
+def tool_cancelar_lembrete(lembrete_id: int) -> Dict[str, Any]:
+    """Cancela um lembrete no formato canônico."""
     user_id = get_current_user_id() or get_current_user()
     res = cancelar_lembrete(user_id, int(lembrete_id))
     if res.get("sucesso"):
-        return f"Sucesso: {res['mensagem']}"
-    return f"Erro: {res.get('mensagem', 'Falha ao cancelar lembrete.')}"
+        return {
+            "sucesso": True,
+            "dados": res,
+            "erro": None,
+        }
+    return {
+        "sucesso": False,
+        "dados": None,
+        "erro": res.get("mensagem", "Falha ao cancelar lembrete."),
+    }

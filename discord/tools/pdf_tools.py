@@ -6,7 +6,7 @@ listar sumários, resumir capítulos específicos, indexar no ChromaDB
 e responder a dúvidas sobre as obras com citação de páginas.
 """
 
-from typing import Optional
+from typing import Any, Dict, Optional
 from context_manager import add_pending_file, get_current_user
 from pdf_manager import (
     consultar_documento_rag,
@@ -30,13 +30,22 @@ from tools.registry import register_tool
         "required": [],
     },
 )
-def tool_listar_meus_pdfs() -> str:
+def tool_listar_meus_pdfs() -> Dict[str, Any]:
     """Retorna a lista de PDFs disponíveis para o usuário atual."""
     usuario = get_current_user()
     arquivos = listar_status_pdfs_usuario(usuario)
 
     if not arquivos:
-        return f"Não há nenhum arquivo PDF salvo na pasta do usuário '{usuario}' no momento."
+        return {
+            "sucesso": True,
+            "dados": {
+                "usuario": usuario,
+                "total": 0,
+                "arquivos": [],
+                "mensagem": f"Não há nenhum arquivo PDF salvo na pasta do usuário '{usuario}' no momento.",
+            },
+            "erro": None,
+        }
 
     linhas = [f"Arquivos PDF disponíveis para o usuário '{usuario}' ({len(arquivos)} arquivo(s)):"]
     for idx, arq in enumerate(arquivos, start=1):
@@ -45,7 +54,16 @@ def tool_listar_meus_pdfs() -> str:
             f"{idx}. {arq['nome']} — {arq['title']} ({arq['total_pages']} págs, {arq['tamanho_formatado']}) [{status_rag}]"
         )
 
-    return "\n".join(linhas)
+    return {
+        "sucesso": True,
+        "dados": {
+            "usuario": usuario,
+            "total": len(arquivos),
+            "arquivos": arquivos,
+            "texto_formatado": "\n".join(linhas),
+        },
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -62,7 +80,7 @@ def tool_listar_meus_pdfs() -> str:
         "required": ["nome_arquivo"],
     },
 )
-def tool_disponibilizar_pdf(nome_arquivo: str) -> str:
+def tool_disponibilizar_pdf(nome_arquivo: str) -> Dict[str, Any]:
     """Localiza o PDF e registra para envio como anexo no Discord."""
     usuario = get_current_user()
     caminho = localizar_pdf_usuario(usuario, nome_arquivo)
@@ -70,16 +88,22 @@ def tool_disponibilizar_pdf(nome_arquivo: str) -> str:
     if not caminho:
         arquivos = listar_pdfs_usuario(usuario)
         disponiveis = [a["nome"] for a in arquivos]
-        return (
-            f"Arquivo '{nome_arquivo}' não foi encontrado na pasta do usuário '{usuario}'. "
-            f"Arquivos disponíveis no momento: {disponiveis}"
-        )
+        return {
+            "sucesso": False,
+            "dados": {"disponiveis": disponiveis},
+            "erro": f"Arquivo '{nome_arquivo}' não foi encontrado na pasta do usuário '{usuario}'.",
+        }
 
     add_pending_file(caminho)
-    return (
-        f"Sucesso: O arquivo '{caminho.name}' foi localizado com sucesso na pasta do usuário "
-        f"e será enviado automaticamente como anexo no chat do Discord."
-    )
+    return {
+        "sucesso": True,
+        "dados": {
+            "arquivo": caminho.name,
+            "caminho": str(caminho),
+            "mensagem": f"O arquivo '{caminho.name}' foi localizado e agendado para envio como anexo no chat do Discord.",
+        },
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -96,13 +120,18 @@ def tool_disponibilizar_pdf(nome_arquivo: str) -> str:
         "required": ["arquivo"],
     },
 )
-async def tool_consultar_metadados_pdf(arquivo: str) -> str:
+async def tool_consultar_metadados_pdf(arquivo: str) -> Dict[str, Any]:
     """Consulta os metadados catalográficos do PDF."""
     usuario = get_current_user()
     res = await obter_metadados_documento(usuario, arquivo)
-    if not res.get("sucesso"):
-        return res.get("mensagem", "Erro ao obter metadados do documento.")
-    return res["resposta_formatada"]
+    sucesso = res.get("sucesso", False)
+    if not sucesso:
+        return {"sucesso": False, "dados": None, "erro": res.get("mensagem", "Erro ao obter metadados do documento.")}
+    return {
+        "sucesso": True,
+        "dados": res,
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -119,13 +148,18 @@ async def tool_consultar_metadados_pdf(arquivo: str) -> str:
         "required": ["arquivo"],
     },
 )
-async def tool_obter_sumario_pdf(arquivo: str) -> str:
+async def tool_obter_sumario_pdf(arquivo: str) -> Dict[str, Any]:
     """Retorna o sumário e a estrutura de capítulos do PDF."""
     usuario = get_current_user()
     res = await obter_sumario_documento(usuario, arquivo)
-    if not res.get("sucesso"):
-        return res.get("mensagem", "Erro ao obter sumário do documento.")
-    return res["resposta_formatada"]
+    sucesso = res.get("sucesso", False)
+    if not sucesso:
+        return {"sucesso": False, "dados": None, "erro": res.get("mensagem", "Erro ao obter sumário do documento.")}
+    return {
+        "sucesso": True,
+        "dados": res,
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -146,13 +180,18 @@ async def tool_obter_sumario_pdf(arquivo: str) -> str:
         "required": ["arquivo", "capitulo"],
     },
 )
-async def tool_resumir_capitulo_pdf(arquivo: str, capitulo: str) -> str:
+async def tool_resumir_capitulo_pdf(arquivo: str, capitulo: str) -> Dict[str, Any]:
     """Gera resumo de um capítulo específico do PDF."""
     usuario = get_current_user()
     res = await resumir_capitulo_documento(usuario, arquivo, capitulo, gerar_resposta_llm=False)
-    if not res.get("sucesso"):
-        return res.get("mensagem", "Erro ao resumir capítulo.")
-    return res["resposta_formatada"]
+    sucesso = res.get("sucesso", False)
+    if not sucesso:
+        return {"sucesso": False, "dados": None, "erro": res.get("mensagem", "Erro ao resumir capítulo.")}
+    return {
+        "sucesso": True,
+        "dados": res,
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -169,13 +208,18 @@ async def tool_resumir_capitulo_pdf(arquivo: str, capitulo: str) -> str:
         "required": ["arquivo"],
     },
 )
-async def tool_indexar_pdf_rag(arquivo: str) -> str:
+async def tool_indexar_pdf_rag(arquivo: str) -> Dict[str, Any]:
     """Indexa o PDF no ChromaDB para busca semântica."""
     usuario = get_current_user()
     res = await indexar_documento_rag(usuario, arquivo)
-    if not res.get("sucesso"):
-        return res.get("mensagem", "Erro ao indexar o documento.")
-    return res.get("resposta_formatada") or res.get("mensagem", "Documento indexado.")
+    sucesso = res.get("sucesso", False)
+    if not sucesso:
+        return {"sucesso": False, "dados": None, "erro": res.get("mensagem", "Erro ao indexar o documento.")}
+    return {
+        "sucesso": True,
+        "dados": res.get("resposta_formatada") or res.get("mensagem", "Documento indexado com sucesso."),
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -196,10 +240,15 @@ async def tool_indexar_pdf_rag(arquivo: str) -> str:
         "required": ["arquivo", "pergunta"],
     },
 )
-async def tool_consultar_conteudo_pdf_rag(arquivo: str, pergunta: str) -> str:
+async def tool_consultar_conteudo_pdf_rag(arquivo: str, pergunta: str) -> Dict[str, Any]:
     """Realiza consulta semântica com citação de páginas no conteúdo do PDF."""
     usuario = get_current_user()
     res = await consultar_documento_rag(usuario, arquivo, pergunta, gerar_resposta_llm=False)
-    if not res.get("sucesso"):
-        return res.get("mensagem", "Erro ao consultar o conteúdo do PDF.")
-    return res["resposta_formatada"]
+    sucesso = res.get("sucesso", False)
+    if not sucesso:
+        return {"sucesso": False, "dados": None, "erro": res.get("mensagem", "Erro ao consultar o conteúdo do PDF.")}
+    return {
+        "sucesso": True,
+        "dados": res,
+        "erro": None,
+    }

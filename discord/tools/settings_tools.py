@@ -43,9 +43,15 @@ def tool_configurar_modo_resposta(modo: str) -> Dict[str, Any]:
     """Define a preferência de resposta do usuário atual."""
     user_id = get_current_user_id()
     if not user_id:
-        return {"sucesso": False, "mensagem": "ID do usuário não identificado na sessão atual."}
+        return {"sucesso": False, "dados": None, "erro": "ID do usuário não identificado na sessão atual."}
 
-    return definir_modo_resposta(user_id, modo)
+    res = definir_modo_resposta(user_id, modo)
+    sucesso = res.get("sucesso", True)
+    return {
+        "sucesso": sucesso,
+        "dados": res.get("mensagem") if sucesso else None,
+        "erro": None if sucesso else res.get("mensagem"),
+    }
 
 
 @register_tool(
@@ -60,7 +66,7 @@ def tool_consultar_modo_resposta() -> Dict[str, Any]:
     """Informa qual modo de resposta está ativo para o usuário."""
     user_id = get_current_user_id()
     if not user_id:
-        return {"sucesso": False, "mensagem": "ID do usuário não identificado na sessão atual."}
+        return {"sucesso": False, "dados": None, "erro": "ID do usuário não identificado na sessão atual."}
 
     modo = obter_modo_resposta(user_id)
     descricoes = {
@@ -70,9 +76,12 @@ def tool_consultar_modo_resposta() -> Dict[str, Any]:
     }
     return {
         "sucesso": True,
-        "modo": modo,
-        "descricao": descricoes.get(modo, modo),
-        "voz": "pt-BR-FranciscaNeural",
+        "dados": {
+            "modo": modo,
+            "descricao": descricoes.get(modo, modo),
+            "voz": "pt-BR-FranciscaNeural",
+        },
+        "erro": None,
     }
 
 
@@ -106,19 +115,26 @@ def tool_configurar_provedor_modelo(provedor: str) -> Dict[str, Any]:
     user_id = get_current_user_id()
     user_name = get_current_user()
     if not user_id:
-        return {"sucesso": False, "mensagem": "ID do usuário não identificado na sessão atual."}
+        return {"sucesso": False, "dados": None, "erro": "ID do usuário não identificado na sessão atual."}
 
     prov_norm = provedor.strip().lower()
     if prov_norm in ("google", "gemini", "gemini-pro") and not llm_client.tem_gemini_disponivel():
         return {
             "sucesso": False,
-            "mensagem": (
+            "dados": None,
+            "erro": (
                 "⚠️ A API do Google Gemini ainda não possui uma chave configurada. "
                 "Para ativar, use o comando `!modelo key <sua_chave>` no Discord ou configure no `.env`."
             ),
         }
 
-    return definir_preferencia_modelo(user_id, user_name, prov_norm)
+    res = definir_preferencia_modelo(user_id, user_name, prov_norm)
+    sucesso = res.get("sucesso", True)
+    return {
+        "sucesso": sucesso,
+        "dados": res.get("mensagem") if sucesso else None,
+        "erro": None if sucesso else res.get("mensagem"),
+    }
 
 
 @register_tool(
@@ -136,16 +152,19 @@ def tool_consultar_provedor_modelo() -> Dict[str, Any]:
 
     user_id = get_current_user_id()
     if not user_id:
-        return {"sucesso": False, "mensagem": "ID do usuário não identificado na sessão atual."}
+        return {"sucesso": False, "dados": None, "erro": "ID do usuário não identificado na sessão atual."}
 
     pref = obter_preferencia_modelo(user_id)
     gemini_ok = llm_client.tem_gemini_disponivel()
 
     return {
         "sucesso": True,
-        "provedor_ativo": pref["provider"],
-        "modelo_ativo": pref["model_name"],
-        "auto_failover": pref["auto_failover"],
-        "google_gemini_disponivel": gemini_ok,
+        "dados": {
+            "provedor_ativo": pref["provider"],
+            "modelo_ativo": pref["model_name"],
+            "auto_failover": pref["auto_failover"],
+            "google_gemini_disponivel": gemini_ok,
+        },
+        "erro": None,
     }
 

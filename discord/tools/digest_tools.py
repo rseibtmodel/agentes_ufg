@@ -17,18 +17,26 @@ from tools.registry import register_tool
     name="gerar_resumo_matinal",
     description="Gera e retorna o Resumo Matinal completo do usuário para hoje (compromissos da agenda, lembretes, listas pendentes e previsão do tempo). Use quando o usuário pedir seu resumo diário ou matinal.",
 )
-async def tool_gerar_resumo_matinal(cidade: Optional[str] = None) -> str:
+async def tool_gerar_resumo_matinal(cidade: Optional[str] = None) -> Dict[str, Any]:
     """Gera o resumo matinal do dia atual para o usuário ativo."""
     user_id = get_current_user_id()
     if not user_id:
-        return "Erro: Identificador de usuário não encontrado no contexto atual."
+        return {"sucesso": False, "dados": None, "erro": "Identificador de usuário não encontrado no contexto atual."}
 
     cfg = obter_configuracao_digest(user_id)
     cidade_alvo = cidade or cfg.get("city", "Curitiba")
 
     dados = await coletar_dados_dia(user_id, "Usuário", cidade=cidade_alvo)
     resumo = await gerar_resumo_matinal_texto(dados)
-    return resumo
+    return {
+        "sucesso": True,
+        "dados": {
+            "cidade": cidade_alvo,
+            "resumo": resumo,
+            "detalhes": dados,
+        },
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -44,12 +52,18 @@ def tool_configurar_resumo_matinal(
     user_id = get_current_user_id()
     channel_id = get_current_channel_id()
     if not user_id:
-        return {"sucesso": False, "mensagem": "Usuário não identificado no contexto."}
+        return {"sucesso": False, "dados": None, "erro": "Usuário não identificado no contexto."}
 
-    return atualizar_configuracao_digest(
+    res = atualizar_configuracao_digest(
         user_id=user_id,
         enabled=ativado,
         time=horario,
         channel_id=channel_id,
         city=cidade,
     )
+    sucesso = res.get("sucesso", True)
+    return {
+        "sucesso": sucesso,
+        "dados": res.get("mensagem") if sucesso else None,
+        "erro": None if sucesso else res.get("mensagem"),
+    }

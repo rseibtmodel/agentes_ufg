@@ -6,6 +6,7 @@ mantendo o heartbeat do Discord ativo e orquestrando o ciclo de chamadas
 de ferramentas (function calling / tools).
 """
 
+import json
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 from openai import AsyncOpenAI
@@ -202,10 +203,11 @@ class LLMClient:
                 logger.info("[%s] Executando tool '%s' com args: %s", provider_label, func_name, func_args)
                 resultado = await execute_tool(func_name, func_args)
 
+                content_str = resultado if isinstance(resultado, str) else json.dumps(resultado, ensure_ascii=False)
                 historico_conversa.append({
                     "role": "tool",
                     "tool_call_id": tool_call.id,
-                    "content": str(resultado),
+                    "content": content_str,
                 })
 
         logger.warning("[%s] Limite máximo de iterações de tools atingido (%d)", provider_label, MAX_TOOL_CALL_ITERATIONS)

@@ -899,7 +899,8 @@ async def indexar_documento_rag(
                 for c in lote
             ]
 
-            colecao.add(
+            await asyncio.to_thread(
+                colecao.add,
                 ids=ids_lote,
                 embeddings=vetores,
                 documents=textos_lote,
@@ -915,7 +916,8 @@ async def indexar_documento_rag(
                         input=c["texto"],
                     )
                     v_ind = res_ind.data[0].embedding
-                    colecao.add(
+                    await asyncio.to_thread(
+                        colecao.add,
                         ids=[f"doc{doc['id']}_p{c['pagina']}_idx{i + sub_idx}"],
                         embeddings=[v_ind],
                         documents=[c["texto"]],
@@ -1008,13 +1010,15 @@ async def consultar_documento_rag(
 
     # Busca top 4 fragmentos mais relevantes
     try:
-        limite = min(4, colecao.count())
-        res_query = colecao.query(
-            query_embeddings=[vetor_pergunta],
-            n_results=limite,
-            include=["documents", "metadatas", "distances"],
-        )
+        def _query_pdf_sync():
+            limite = min(4, colecao.count())
+            return colecao.query(
+                query_embeddings=[vetor_pergunta],
+                n_results=limite,
+                include=["documents", "metadatas", "distances"],
+            )
 
+        res_query = await asyncio.to_thread(_query_pdf_sync)
         documentos = res_query.get("documents", [[]])[0]
         metadatas = res_query.get("metadatas", [[]])[0]
     except Exception as e:

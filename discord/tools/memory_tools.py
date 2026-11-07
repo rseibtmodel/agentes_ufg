@@ -5,6 +5,7 @@ Permite que a LLM pesquise ativamente no acervo de memórias passadas do usuári
 quando precisar resgatar fatos, preferências ou diálogos antigos.
 """
 
+from typing import Any, Dict
 from context_manager import get_current_user
 from tools.registry import register_tool
 from vector_db import buscar_memorias_relevantes, contar_memorias
@@ -24,21 +25,48 @@ from vector_db import buscar_memorias_relevantes, contar_memorias
         "required": ["termo_ou_pergunta"],
     },
 )
-async def tool_consultar_memoria_passada(termo_ou_pergunta: str) -> str:
+async def tool_consultar_memoria_passada(termo_ou_pergunta: str) -> Dict[str, Any]:
     """Busca semanticamente na coleção '{user}_memory' do usuário."""
     usuario = get_current_user()
     total = contar_memorias(usuario)
 
     if total == 0:
-        return f"A memória vetorial do usuário '{usuario}' está vazia no momento."
+        return {
+            "sucesso": True,
+            "dados": {
+                "usuario": usuario,
+                "total": 0,
+                "memorias": [],
+                "mensagem": f"A memória vetorial do usuário '{usuario}' está vazia no momento.",
+            },
+            "erro": None,
+        }
 
     memorias = await buscar_memorias_relevantes(usuario, termo_ou_pergunta, top_k=3)
     if not memorias:
-        return f"Nenhum registro relevante encontrado na memória vetorial para '{termo_ou_pergunta}'."
+        return {
+            "sucesso": True,
+            "dados": {
+                "usuario": usuario,
+                "total": 0,
+                "memorias": [],
+                "mensagem": f"Nenhum registro relevante encontrado na memória vetorial para '{termo_ou_pergunta}'.",
+            },
+            "erro": None,
+        }
 
     linhas = [f"Resultados encontrados na memória vetorial de '{usuario}' ({len(memorias)} registro(s)):"]
     for idx, mem in enumerate(memorias, start=1):
         papel = "Usuário" if mem["role"] == "user" else "Assistente"
         linhas.append(f"{idx}. [{papel}]: {mem['conteudo']} (relevância: distância {mem['distancia']})")
 
-    return "\n".join(linhas)
+    return {
+        "sucesso": True,
+        "dados": {
+            "usuario": usuario,
+            "total": len(memorias),
+            "memorias": memorias,
+            "texto_formatado": "\n".join(linhas),
+        },
+        "erro": None,
+    }

@@ -2,10 +2,10 @@
 Ferramentas de Consulta e Gestão de Templates de Prompt (Prompt Hub) para a LLM — IDEA-20.
 """
 
+from typing import Any, Dict, Optional
 from context_manager import get_current_user_id
 from prompt_hub import listar_templates, obter_template, salvar_template
 from tools.registry import register_tool
-from typing import Optional
 
 
 @register_tool(
@@ -21,18 +21,17 @@ from typing import Optional
         },
     },
 )
-async def tool_listar_templates_prompt(categoria: Optional[str] = None) -> str:
-    """Retorna os templates disponíveis na Central de Prompts."""
+async def tool_listar_templates_prompt(categoria: Optional[str] = None) -> Dict[str, Any]:
+    """Retorna os templates disponíveis na Central de Prompts no formato canônico."""
     templates = listar_templates(categoria=categoria)
-    if not templates:
-        return "Nenhum template encontrado no catálogo para a categoria informada."
-
-    linhas = ["📚 **Templates de Prompt Disponíveis no Catálogo:**"]
-    for t in templates:
-        tipo = "🔒 Oficial" if t["is_builtin"] else "👤 Custom"
-        linhas.append(f"• **`{t['id']}`** ({tipo}) — *{t['nome']}*: {t['descricao']} (cat: `{t['categoria']}`)")
-
-    return "\n".join(linhas)
+    return {
+        "sucesso": True,
+        "dados": {
+            "total_templates": len(templates),
+            "templates": templates,
+        },
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -49,19 +48,21 @@ async def tool_listar_templates_prompt(categoria: Optional[str] = None) -> str:
         "required": ["slug_template"],
     },
 )
-async def tool_obter_template_prompt(slug_template: str) -> str:
-    """Retorna o conteúdo do template solicitado."""
+async def tool_obter_template_prompt(slug_template: str) -> Dict[str, Any]:
+    """Retorna o conteúdo do template solicitado no formato canônico."""
     template = obter_template(slug_template)
     if not template:
-        return f"Template '{slug_template}' não encontrado no catálogo da Central de Prompts (!prompts)."
+        return {
+            "sucesso": False,
+            "dados": None,
+            "erro": f"Template '{slug_template}' não encontrado no catálogo da Central de Prompts (!prompts).",
+        }
 
-    tipo = "Oficial de Fábrica" if template["is_builtin"] else "Customizado do Usuário"
-    return (
-        f"📋 **Template:** `{template['id']}` ({template['nome']})\n"
-        f"🏷️ **Tipo:** {tipo} | **Categoria:** `{template['categoria']}` | **Temp Sugerida:** `{template['temperatura']}`\n"
-        f"📝 **Descrição:** {template['descricao']}\n\n"
-        f"```text\n{template['template_text']}\n```"
-    )
+    return {
+        "sucesso": True,
+        "dados": template,
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -100,8 +101,8 @@ async def tool_salvar_template_prompt(
     texto_prompt: str,
     descricao: Optional[str] = None,
     categoria: str = "geral",
-) -> str:
-    """Salva um novo template no catálogo."""
+) -> Dict[str, Any]:
+    """Salva um novo template no catálogo no formato canônico."""
     user_id = get_current_user_id()
     res = salvar_template(
         slug_id=slug,
@@ -111,4 +112,14 @@ async def tool_salvar_template_prompt(
         categoria=categoria,
         user_id=user_id,
     )
-    return res["mensagem"]
+    if res.get("sucesso"):
+        return {
+            "sucesso": True,
+            "dados": res,
+            "erro": None,
+        }
+    return {
+        "sucesso": False,
+        "dados": None,
+        "erro": res.get("mensagem", "Falha ao salvar template."),
+    }

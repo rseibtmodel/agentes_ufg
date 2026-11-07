@@ -5,7 +5,7 @@ Ferramentas de Gestão do Knowledge Hub e RAG Isolado por Canal — IDEA-25.
 from context_manager import get_current_channel_id, get_current_user_id
 from topic_manager import adicionar_nota, buscar_notas_rag, listar_notas, obter_topico_canal
 from tools.registry import register_tool
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @register_tool(
@@ -27,15 +27,20 @@ from typing import List, Optional
         "required": ["conteudo"],
     },
 )
-async def tool_adicionar_nota_canal(conteudo: str, tags: Optional[List[str]] = None) -> str:
+async def tool_adicionar_nota_canal(conteudo: str, tags: Optional[List[str]] = None) -> Dict[str, Any]:
     """Registra uma nota no tópico do canal ativo."""
     channel_id = get_current_channel_id()
     user_id = get_current_user_id()
     if not channel_id:
-        return "Erro: Não foi possível identificar o canal atual para registrar a nota."
+        return {"sucesso": False, "dados": None, "erro": "Não foi possível identificar o canal atual para registrar a nota."}
 
     res = await adicionar_nota(channel_id=channel_id, user_id=user_id, content=conteudo, tags=tags)
-    return res["mensagem"]
+    sucesso = res.get("sucesso", True)
+    return {
+        "sucesso": sucesso,
+        "dados": res.get("mensagem") if sucesso else None,
+        "erro": None if sucesso else res.get("mensagem"),
+    }
 
 
 @register_tool(
@@ -56,25 +61,43 @@ async def tool_adicionar_nota_canal(conteudo: str, tags: Optional[List[str]] = N
         "required": ["consulta_semantica"],
     },
 )
-async def tool_buscar_notas_canal(consulta_semantica: str, top_k: int = 4) -> str:
+async def tool_buscar_notas_canal(consulta_semantica: str, top_k: int = 4) -> Dict[str, Any]:
     """Busca semanticamente nas notas do canal temático atual."""
     channel_id = get_current_channel_id()
     if not channel_id:
-        return "Erro: Canal atual não identificado."
+        return {"sucesso": False, "dados": None, "erro": "Canal atual não identificado."}
 
     topico = obter_topico_canal(channel_id)
     nome_topico = topico["topic_name"] if topico else f"Canal {channel_id}"
 
     notas = await buscar_notas_rag(channel_id, consulta_semantica, top_k=top_k)
     if not notas:
-        return f"Nenhuma nota relevante encontrada no tópico '{nome_topico}' para a consulta '{consulta_semantica}'."
+        return {
+            "sucesso": True,
+            "dados": {
+                "topico": nome_topico,
+                "total": 0,
+                "notas": [],
+                "mensagem": f"Nenhuma nota relevante encontrada no tópico '{nome_topico}' para a consulta '{consulta_semantica}'.",
+            },
+            "erro": None,
+        }
 
     linhas = [f"📚 **Notas recuperadas no tópico '{nome_topico}' ({len(notas)} resultado(s)):**"]
     for idx, n in enumerate(notas, start=1):
         tags_str = f" [{n.get('tags')}]" if n.get("tags") else ""
         linhas.append(f"{idx}. (ID: `{n.get('note_id')}`{tags_str}): {n.get('conteudo')} (distância: {n.get('distancia')})")
 
-    return "\n".join(linhas)
+    return {
+        "sucesso": True,
+        "dados": {
+            "topico": nome_topico,
+            "total": len(notas),
+            "notas": notas,
+            "texto_formatado": "\n".join(linhas),
+        },
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -94,11 +117,11 @@ async def tool_buscar_notas_canal(consulta_semantica: str, top_k: int = 4) -> st
         },
     },
 )
-async def tool_listar_notas_canal(tag_filtro: Optional[str] = None, limite: int = 10) -> str:
+async def tool_listar_notas_canal(tag_filtro: Optional[str] = None, limite: int = 10) -> Dict[str, Any]:
     """Lista as notas mais recentes do canal atual."""
     channel_id = get_current_channel_id()
     if not channel_id:
-        return "Erro: Canal atual não identificado."
+        return {"sucesso": False, "dados": None, "erro": "Canal atual não identificado."}
 
     topico = obter_topico_canal(channel_id)
     nome_topico = topico["topic_name"] if topico else f"Canal {channel_id}"
@@ -106,11 +129,29 @@ async def tool_listar_notas_canal(tag_filtro: Optional[str] = None, limite: int 
     notas = listar_notas(channel_id, tag=tag_filtro, limite=limite)
     if not notas:
         filtro_txt = f" com a tag '{tag_filtro}'" if tag_filtro else ""
-        return f"Nenhuma nota encontrada no tópico '{nome_topico}'{filtro_txt}."
+        return {
+            "sucesso": True,
+            "dados": {
+                "topico": nome_topico,
+                "total": 0,
+                "notas": [],
+                "mensagem": f"Nenhuma nota encontrada no tópico '{nome_topico}'{filtro_txt}.",
+            },
+            "erro": None,
+        }
 
     linhas = [f"📝 **Notas salvas no tópico '{nome_topico}' ({len(notas)} nota(s)):**"]
     for idx, n in enumerate(notas, start=1):
         tags_str = f" `{' '.join(n['tags'])}`" if n["tags"] else ""
         linhas.append(f"{idx}. [`{n['id']}`]{tags_str}: {n['content']}")
 
-    return "\n".join(linhas)
+    return {
+        "sucesso": True,
+        "dados": {
+            "topico": nome_topico,
+            "total": len(notas),
+            "notas": notas,
+            "texto_formatado": "\n".join(linhas),
+        },
+        "erro": None,
+    }

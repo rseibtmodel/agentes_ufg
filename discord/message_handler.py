@@ -10,6 +10,7 @@ Orquestra o fluxo de entrada de mensagens do Discord:
 6. Divisão automática de mensagens longas (> 2000 caracteres).
 """
 
+import asyncio
 import logging
 import unicodedata
 import discord
@@ -288,7 +289,7 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
     # =========================================================================
     modo_solicitado = detectar_solicitacao_modo_resposta(conteudo)
     if modo_solicitado:
-        res = definir_modo_resposta(message.author.id, modo_solicitado)
+        res = await asyncio.to_thread(definir_modo_resposta, message.author.id, modo_solicitado)
         msg_confirmacao = f"🔊 {res['mensagem']}"
         if modo_solicitado in ("audio", "ambos"):
             caminho_audio, _ = await sintetizar_fala_edge(res["mensagem"])
@@ -319,7 +320,7 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
             await _send_gateway(message.channel, content=msg_aviso_chave)
             return
 
-        res_mod = definir_preferencia_modelo(message.author.id, message.author.name, modelo_solicitado)
+        res_mod = await asyncio.to_thread(definir_preferencia_modelo, message.author.id, message.author.name, modelo_solicitado)
         await _send_gateway(message.channel, content=f"🤖 {res_mod['mensagem']}")
         return
 
@@ -332,8 +333,8 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
     channel_id = str(message.channel.id)
 
     # Identifica se o canal atual possui tópico temático vinculado (IDEA-25)
-    topico_canal = obter_topico_canal(channel_id)
-    persona_canal = obter_persona_canal(channel_id)
+    topico_canal = await asyncio.to_thread(obter_topico_canal, channel_id)
+    persona_canal = await asyncio.to_thread(obter_persona_canal, channel_id)
 
     # Verifica se a mensagem contém a flag --global para escapar do RAG isolado
     flag_global = "--global" in conteudo
@@ -374,11 +375,11 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
     # Persistência da mensagem do usuário:
     # Se estiver em canal de tópico, isola o histórico recente com channel_id
     if topico_canal:
-        salvar_mensagem(user_id, "user", conteudo, channel_id=channel_id)
+        await asyncio.to_thread(salvar_mensagem, user_id, "user", conteudo, channel_id=channel_id)
         if flag_global:
             await salvar_memoria_vetorial(user_name, "user", conteudo_limpo)
     else:
-        salvar_mensagem(user_id, "user", conteudo)
+        await asyncio.to_thread(salvar_mensagem, user_id, "user", conteudo)
         await salvar_memoria_vetorial(user_name, "user", conteudo)
 
     # =========================================================================
@@ -387,7 +388,8 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
     async with message.channel.typing():
         try:
             # Recupera histórico recente de conversa do SQLite (com isolamento por canal se for tópico)
-            historico = obter_historico(
+            historico = await asyncio.to_thread(
+                obter_historico,
                 user_id,
                 limite=HISTORICO_LIMITE_PADRAO,
                 channel_id=channel_id if topico_canal else None,
@@ -479,7 +481,7 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
 
             # Se não houver override de modelo na persona do canal, usa a preferência do usuário
             if not prov_alvo:
-                pref_modelo = obter_preferencia_modelo(user_id)
+                pref_modelo = await asyncio.to_thread(obter_preferencia_modelo, user_id)
                 prov_alvo = pref_modelo.get("provider", "local")
                 mod_alvo = pref_modelo.get("model_name")
                 failover_ativo = pref_modelo.get("auto_failover", True)
@@ -497,14 +499,14 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
                 incluir_badge=True,
             )
 
-            # Salva a resposta gerada no banco SQLite e no ChromaDB
+            # Salva a resposta gerada no banco SQLite e no ChromaDB de forma não-bloqueante
             if resposta_texto and resposta_texto.strip():
                 if topico_canal:
-                    salvar_mensagem(user_id, "assistant", resposta_texto, channel_id=channel_id)
+                    await asyncio.to_thread(salvar_mensagem, user_id, "assistant", resposta_texto, channel_id=channel_id)
                     if flag_global:
                         await salvar_memoria_vetorial(user_name, "assistant", resposta_texto)
                 else:
-                    salvar_mensagem(user_id, "assistant", resposta_texto)
+                    await asyncio.to_thread(salvar_mensagem, user_id, "assistant", resposta_texto)
                     await salvar_memoria_vetorial(user_name, "assistant", resposta_texto)
 
             # Divide e prepara mensagens respeitando o limite do Discord
@@ -515,7 +517,7 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
             # =================================================================
             # ENTREGA DE RESPOSTA CONFORME A PREFERÊNCIA (TEXTO / ÁUDIO / AMBOS)
             # =================================================================
-            modo_resposta = obter_modo_resposta(user_id)
+            modo_resposta = await asyncio.to_thread(obter_modo_resposta, user_id)
             caminho_audio = None
             audio_delegado_gateway = False
 

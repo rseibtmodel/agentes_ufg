@@ -19,7 +19,7 @@ from persona_manager import (
 )
 from tools.registry import register_tool
 from ui_components import criar_view_selecao_persona
-from typing import Optional
+from typing import Any, Dict, Optional
 
 
 @register_tool(
@@ -27,14 +27,14 @@ from typing import Optional
     description="Inspeciona a persona ativa, temperatura e diretrizes de comportamento configuradas para o canal atual.",
     parameters={"type": "object", "properties": {}},
 )
-async def tool_consultar_persona_canal() -> str:
+async def tool_consultar_persona_canal() -> Dict[str, Any]:
     """Retorna as diretrizes da persona do canal ativo."""
     channel_id = get_current_channel_id()
     user_id = get_current_user_id()
     guild_id = get_current_guild_id()
     channel_name = get_current_channel_name()
     if not channel_id:
-        return "Erro: Canal atual não identificado."
+        return {"sucesso": False, "dados": None, "erro": "Canal atual não identificado."}
 
     # Anexa a interface interativa com dropdown de seleção de persona
     if channel_id and user_id:
@@ -49,14 +49,30 @@ async def tool_consultar_persona_canal() -> str:
 
     persona = obter_persona_canal(channel_id)
     if not persona:
-        return "Este canal não possui persona específica ativa; ele utiliza o comportamento padrão do assistente. Um menu dropdown interativo foi disponibilizado para seleção rápida de persona."
+        return {
+            "sucesso": True,
+            "dados": {
+                "persona_ativa": False,
+                "mensagem": "Este canal não possui persona específica ativa; ele utiliza o comportamento padrão do assistente.",
+            },
+            "erro": None,
+        }
 
-    modelo_txt = f" | Modelo: `{persona['model_override']}`" if persona["model_override"] else ""
-    return (
-        f"🎭 **Persona Ativa no Canal:** `{persona['channel_name'] or channel_id}`\n"
-        f"🌡️ **Temperatura:** `{persona['temperature']}`{modelo_txt}\n\n"
-        f"**Diretrizes:**\n{persona['system_prompt']}"
+    modelo_txt = f" | Modelo: `{persona['model_override']}`" if persona.get("model_override") else ""
+    info_formatada = (
+        f"🎭 **Persona Ativa no Canal:** `{persona.get('channel_name') or channel_id}`\n"
+        f"🌡️ **Temperatura:** `{persona.get('temperature')}`{modelo_txt}\n\n"
+        f"**Diretrizes:**\n{persona.get('system_prompt')}"
     )
+    return {
+        "sucesso": True,
+        "dados": {
+            "persona_ativa": True,
+            "detalhes": persona,
+            "texto_formatado": info_formatada,
+        },
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -80,12 +96,12 @@ async def tool_consultar_persona_canal() -> str:
 async def tool_configurar_persona_canal(
     prompt_persona: str,
     temperatura: Optional[float] = None,
-) -> str:
+) -> Dict[str, Any]:
     """Define as diretrizes de persona para o canal."""
     channel_id = get_current_channel_id()
     user_id = get_current_user_id()
     if not channel_id:
-        return "Erro: Canal atual não identificado."
+        return {"sucesso": False, "dados": None, "erro": "Canal atual não identificado."}
 
     res = definir_persona_canal(
         channel_id=channel_id,
@@ -93,7 +109,12 @@ async def tool_configurar_persona_canal(
         user_id=user_id,
         temperature=temperatura,
     )
-    return res["mensagem"]
+    sucesso = res.get("sucesso", True)
+    return {
+        "sucesso": sucesso,
+        "dados": res.get("mensagem") if sucesso else None,
+        "erro": None if sucesso else res.get("mensagem"),
+    }
 
 
 @register_tool(
@@ -110,14 +131,14 @@ async def tool_configurar_persona_canal(
         "required": ["nome_preset"],
     },
 )
-async def tool_aplicar_preset_persona_canal(nome_preset: str) -> str:
+async def tool_aplicar_preset_persona_canal(nome_preset: str) -> Dict[str, Any]:
     """Aplica um preset do catálogo no canal."""
     channel_id = get_current_channel_id()
     user_id = get_current_user_id()
     guild_id = get_current_guild_id()
     channel_name = get_current_channel_name()
     if not channel_id:
-        return "Erro: Canal atual não identificado."
+        return {"sucesso": False, "dados": None, "erro": "Canal atual não identificado."}
 
     res = aplicar_preset_canal(
         channel_id=channel_id,
@@ -137,7 +158,12 @@ async def tool_aplicar_preset_persona_canal(nome_preset: str) -> str:
         if v:
             add_pending_view(v)
 
-    return res["mensagem"]
+    sucesso = res.get("sucesso", True)
+    return {
+        "sucesso": sucesso,
+        "dados": res.get("mensagem") if sucesso else None,
+        "erro": None if sucesso else res.get("mensagem"),
+    }
 
 
 @register_tool(
@@ -153,7 +179,7 @@ async def tool_aplicar_preset_persona_canal(nome_preset: str) -> str:
         },
     },
 )
-async def tool_listar_personas_disponiveis(categoria: Optional[str] = None) -> str:
+async def tool_listar_personas_disponiveis(categoria: Optional[str] = None) -> Dict[str, Any]:
     """Lista as personas disponíveis no catálogo."""
     channel_id = get_current_channel_id()
     user_id = get_current_user_id()
@@ -173,7 +199,11 @@ async def tool_listar_personas_disponiveis(categoria: Optional[str] = None) -> s
 
     personas = listar_personas_disponiveis(categoria=categoria)
     if not personas:
-        return "Nenhuma persona encontrada no catálogo."
+        return {
+            "sucesso": True,
+            "dados": {"total": 0, "personas": [], "mensagem": "Nenhuma persona encontrada no catálogo."},
+            "erro": None,
+        }
 
     linhas = [f"🎭 **Personas Disponíveis no Catálogo ({len(personas)}):**\n"]
     for p in personas:
@@ -186,7 +216,15 @@ async def tool_listar_personas_disponiveis(categoria: Optional[str] = None) -> s
         "\n💡 **Troca Rápida de Persona:**",
         "Você pode alternar a persona deste canal instantaneamente utilizando o **menu dropdown interativo** anexado abaixo, ou digitar `!persona canal aplicar <id>`.",
     ])
-    return "\n".join(linhas)
+    return {
+        "sucesso": True,
+        "dados": {
+            "total": len(personas),
+            "personas": personas,
+            "texto_formatado": "\n".join(linhas),
+        },
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -225,7 +263,7 @@ async def tool_cadastrar_nova_persona(
     nome: Optional[str] = None,
     descricao: Optional[str] = None,
     temperatura: Optional[float] = None,
-) -> str:
+) -> Dict[str, Any]:
     """Cadastra uma nova persona no catálogo."""
     channel_id = get_current_channel_id()
     user_id = get_current_user_id()
@@ -252,4 +290,9 @@ async def tool_cadastrar_nova_persona(
         if v:
             add_pending_view(v)
 
-    return res["mensagem"]
+    sucesso = res.get("sucesso", True)
+    return {
+        "sucesso": sucesso,
+        "dados": res.get("mensagem") if sucesso else None,
+        "erro": None if sucesso else res.get("mensagem"),
+    }

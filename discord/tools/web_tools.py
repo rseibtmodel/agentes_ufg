@@ -5,7 +5,7 @@ Disponibiliza as tools 'buscar_na_web' e 'ler_pagina_web' para permitir
 que o assistente acesse informações em tempo real na internet.
 """
 
-from typing import Optional
+from typing import Any, Dict, Optional
 from tools.registry import register_tool
 from web_search_manager import web_search_manager
 
@@ -32,11 +32,20 @@ from web_search_manager import web_search_manager
         "required": ["query"],
     },
 )
-async def tool_buscar_na_web(query: str, max_resultados: Optional[int] = 4) -> str:
-    """Executa a busca na web e retorna os resultados estruturados para a LLM."""
+async def tool_buscar_na_web(query: str, max_resultados: Optional[int] = 4) -> Dict[str, Any]:
+    """Executa a busca na web e retorna os resultados estruturados no formato canônico."""
     limite = min(max(1, max_resultados or 4), 6)
     resultados = await web_search_manager.buscar_na_web(query=query, max_resultados=limite)
-    return web_search_manager.formatar_para_llm(resultados, query)
+    return {
+        "sucesso": True,
+        "dados": {
+            "query": query,
+            "total_encontrado": len(resultados),
+            "resultados": resultados,
+            "resumo_formatado": web_search_manager.formatar_para_llm(resultados, query),
+        },
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -56,17 +65,22 @@ async def tool_buscar_na_web(query: str, max_resultados: Optional[int] = 4) -> s
         "required": ["url"],
     },
 )
-async def tool_ler_pagina_web(url: str) -> str:
-    """Extrai o texto limpo de uma página web."""
+async def tool_ler_pagina_web(url: str) -> Dict[str, Any]:
+    """Extrai o texto limpo de uma página web no formato canônico."""
     res = await web_search_manager.ler_pagina_web(url=url, max_caracteres=3500)
     if not res.get("sucesso"):
-        return f"Erro ao acessar {url}: {res.get('erro', 'Falha desconhecida ao ler página.')}"
+        return {
+            "sucesso": False,
+            "dados": None,
+            "erro": f"Erro ao acessar {url}: {res.get('erro', 'Falha desconhecida ao ler página.')}",
+        }
 
-    titulo = res.get("titulo", "Sem título")
-    conteudo = res.get("conteudo", "")
-    return (
-        f"--- CONTEÚDO EXTRAÍDO DE: {url} ---\n"
-        f"Título: {titulo}\n\n"
-        f"{conteudo}\n"
-        f"--- FIM DO CONTEÚDO ---"
-    )
+    return {
+        "sucesso": True,
+        "dados": {
+            "url": url,
+            "titulo": res.get("titulo", "Sem título"),
+            "conteudo": res.get("conteudo", ""),
+        },
+        "erro": None,
+    }

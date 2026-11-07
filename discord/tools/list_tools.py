@@ -5,6 +5,7 @@ Permite à LLM adicionar itens, consultar itens, marcar itens como concluídos,
 remover itens e excluir itens já finalizados de listas pessoais.
 """
 
+from typing import Any, Dict
 from context_manager import get_current_user
 from list_manager import (
     adicionar_item_lista,
@@ -37,13 +38,13 @@ from tools.registry import register_tool
         "required": ["nome_lista", "item"],
     },
 )
-def tool_adicionar_item_lista(nome_lista: str, item: str) -> str:
-    """Adiciona um item à lista indicada."""
+def tool_adicionar_item_lista(nome_lista: str, item: str) -> Dict[str, Any]:
+    """Adiciona um item à lista indicada no formato canônico."""
     user = get_current_user()
     res = adicionar_item_lista(user, nome_lista, item)
     if res.get("sucesso"):
-        return f"Sucesso: {res['mensagem']}"
-    return f"Erro: {res.get('mensagem', 'Falha ao adicionar item.')}"
+        return {"sucesso": True, "dados": res, "erro": None}
+    return {"sucesso": False, "dados": None, "erro": res.get("mensagem", "Falha ao adicionar item.")}
 
 
 @register_tool(
@@ -60,11 +61,18 @@ def tool_adicionar_item_lista(nome_lista: str, item: str) -> str:
         "required": ["nome_lista"],
     },
 )
-def tool_ver_itens_lista(nome_lista: str) -> str:
-    """Visualiza todos os itens de uma lista específica."""
+def tool_ver_itens_lista(nome_lista: str) -> Dict[str, Any]:
+    """Visualiza todos os itens de uma lista específica no formato canônico."""
     user = get_current_user()
     dados = obter_itens_lista(user, nome_lista)
-    return formatar_lista_para_exibicao(dados)
+    return {
+        "sucesso": True,
+        "dados": {
+            **dados,
+            "resumo_formatado": formatar_lista_para_exibicao(dados),
+        },
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -76,19 +84,18 @@ def tool_ver_itens_lista(nome_lista: str) -> str:
         "required": [],
     },
 )
-def tool_listar_minhas_listas() -> str:
-    """Retorna um resumo de todas as listas do usuário."""
+def tool_listar_minhas_listas() -> Dict[str, Any]:
+    """Retorna um resumo de todas as listas do usuário no formato canônico."""
     user = get_current_user()
     listas = listar_todas_listas(user)
-    if not listas:
-        return "Você ainda não possui nenhuma lista criada. Peça para adicionar itens a uma lista (ex: 'adicione leite na lista de mercado')."
-
-    linhas = ["📋 **Suas listas cadastradas:**"]
-    for l in listas:
-        linhas.append(
-            f"• **{l['nome']}**: {l['total_itens']} itens ({l['pendentes']} pendentes, {l['concluidos']} concluídos)"
-        )
-    return "\n".join(linhas)
+    return {
+        "sucesso": True,
+        "dados": {
+            "total_listas": len(listas),
+            "listas": listas,
+        },
+        "erro": None,
+    }
 
 
 @register_tool(
@@ -114,13 +121,13 @@ def tool_listar_minhas_listas() -> str:
         "required": ["nome_lista", "item_ou_id"],
     },
 )
-def tool_ticar_item_lista(nome_lista: str, item_ou_id: str, concluido: bool = True) -> str:
-    """Marca ou desmarca um item como finalizado."""
+def tool_ticar_item_lista(nome_lista: str, item_ou_id: str, concluido: bool = True) -> Dict[str, Any]:
+    """Marca ou desmarca um item como finalizado no formato canônico."""
     user = get_current_user()
     res = ticar_item_lista(user, nome_lista, item_ou_id, concluido=concluido)
     if res.get("sucesso"):
-        return f"Sucesso: {res['mensagem']}"
-    return f"Erro: {res.get('mensagem', 'Falha ao atualizar o item.')}"
+        return {"sucesso": True, "dados": res, "erro": None}
+    return {"sucesso": False, "dados": None, "erro": res.get("mensagem", "Falha ao atualizar o item.")}
 
 
 @register_tool(
@@ -141,13 +148,13 @@ def tool_ticar_item_lista(nome_lista: str, item_ou_id: str, concluido: bool = Tr
         "required": ["nome_lista", "item_ou_id"],
     },
 )
-def tool_remover_item_lista(nome_lista: str, item_ou_id: str) -> str:
-    """Remove um item da lista."""
+def tool_remover_item_lista(nome_lista: str, item_ou_id: str) -> Dict[str, Any]:
+    """Remove um item da lista no formato canônico."""
     user = get_current_user()
     res = remover_item_lista(user, nome_lista, item_ou_id)
     if res.get("sucesso"):
-        return f"Sucesso: {res['mensagem']}"
-    return f"Erro: {res.get('mensagem', 'Falha ao remover item.')}"
+        return {"sucesso": True, "dados": res, "erro": None}
+    return {"sucesso": False, "dados": None, "erro": res.get("mensagem", "Falha ao remover item.")}
 
 
 @register_tool(
@@ -164,13 +171,13 @@ def tool_remover_item_lista(nome_lista: str, item_ou_id: str) -> str:
         "required": ["nome_lista"],
     },
 )
-def tool_limpar_itens_concluidos_lista(nome_lista: str) -> str:
-    """Apaga os itens concluídos de uma lista."""
+def tool_limpar_itens_concluidos_lista(nome_lista: str) -> Dict[str, Any]:
+    """Apaga os itens concluídos de uma lista no formato canônico."""
     user = get_current_user()
     res = limpar_itens_concluidos(user, nome_lista)
     if res.get("sucesso"):
-        return f"Sucesso: {res['mensagem']}"
-    return f"Erro: {res.get('mensagem', 'Falha ao limpar itens concluídos.')}"
+        return {"sucesso": True, "dados": res, "erro": None}
+    return {"sucesso": False, "dados": None, "erro": res.get("mensagem", "Falha ao limpar itens concluídos.")}
 
 
 @register_tool(
@@ -187,10 +194,10 @@ def tool_limpar_itens_concluidos_lista(nome_lista: str) -> str:
         "required": ["nome_lista"],
     },
 )
-def tool_excluir_lista(nome_lista: str) -> str:
-    """Exclui a lista inteira."""
+def tool_excluir_lista(nome_lista: str) -> Dict[str, Any]:
+    """Exclui a lista inteira no formato canônico."""
     user = get_current_user()
     res = excluir_lista(user, nome_lista)
     if res.get("sucesso"):
-        return f"Sucesso: {res['mensagem']}"
-    return f"Erro: {res.get('mensagem', 'Falha ao excluir lista.')}"
+        return {"sucesso": True, "dados": res, "erro": None}
+    return {"sucesso": False, "dados": None, "erro": res.get("mensagem", "Falha ao excluir lista.")}

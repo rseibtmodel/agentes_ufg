@@ -119,10 +119,15 @@ class ToolRegistry:
         """Executa uma ferramenta registrada pelo nome passando os argumentos.
         
         Suporta chamadas síncronas (executadas em thread separada para não bloquear
-        o event loop) e assíncronas. Retorna sempre uma string serializada.
+        o event loop) e assíncronas. Retorna compulsoriamente uma string JSON formatada
+        no schema canônico: {"sucesso": bool, "dados": Any, "erro": Optional[str]}.
         """
         if name not in self._tools:
-            return f"Erro: Ferramenta '{name}' não encontrada ou não implementada."
+            return json.dumps({
+                "sucesso": False,
+                "dados": None,
+                "erro": f"Ferramenta '{name}' não encontrada ou não implementada.",
+            }, ensure_ascii=False)
 
         tool = self._tools[name]
 
@@ -131,7 +136,11 @@ class ToolRegistry:
             try:
                 args_dict = json.loads(arguments) if arguments.strip() else {}
             except Exception as e:
-                return f"Erro ao decodificar argumentos JSON para '{name}': {str(e)}"
+                return json.dumps({
+                    "sucesso": False,
+                    "dados": None,
+                    "erro": f"Erro ao decodificar argumentos JSON para '{name}': {str(e)}",
+                }, ensure_ascii=False)
         elif isinstance(arguments, dict):
             args_dict = arguments
         else:
@@ -152,13 +161,44 @@ class ToolRegistry:
                 # Executa funções síncronas em thread dedicada para preservar o heartbeat do Discord
                 resultado = await asyncio.to_thread(tool.func, **args_sanitizados)
 
-            if isinstance(resultado, (dict, list)):
-                return json.dumps(resultado, ensure_ascii=False, indent=2)
-            return str(resultado)
+            # Normalização rigorosa para o contrato canônico
+            if isinstance(resultado, dict):
+                if "sucesso" in resultado:
+                    return json.dumps(resultado, ensure_ascii=False, indent=2)
+                return json.dumps({
+                    "sucesso": True,
+                    "dados": resultado,
+                    "erro": None,
+                }, ensure_ascii=False, indent=2)
+
+            if isinstance(resultado, list):
+                return json.dumps({
+                    "sucesso": True,
+                    "dados": resultado,
+                    "erro": None,
+                }, ensure_ascii=False, indent=2)
+
+            res_str = str(resultado)
+            if res_str.lower().startswith("erro"):
+                return json.dumps({
+                    "sucesso": False,
+                    "dados": None,
+                    "erro": res_str,
+                }, ensure_ascii=False, indent=2)
+
+            return json.dumps({
+                "sucesso": True,
+                "dados": res_str,
+                "erro": None,
+            }, ensure_ascii=False, indent=2)
 
         except Exception as e:
             logger.exception("Exceção ao executar tool '%s'", name)
-            return f"Erro na execução da tool '{name}': {str(e)}"
+            return json.dumps({
+                "sucesso": False,
+                "dados": None,
+                "erro": f"Erro na execução da tool '{name}': {str(e)}",
+            }, ensure_ascii=False)
 
     def get_registered_names(self) -> List[str]:
         """Retorna os nomes de todas as ferramentas registradas."""

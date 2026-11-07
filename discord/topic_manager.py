@@ -8,6 +8,7 @@ Responsável por:
 4. Prover busca semântica RAG isolada por canal sem contaminação com a memória pessoal.
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -214,16 +215,19 @@ async def adicionar_nota(
     note_id = str(uuid.uuid4())[:8]  # UUID curto de 8 caracteres legível
 
     # 1. Persistência Relacional no SQLite
-    with _get_connection(db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO channel_notes (id, channel_id, topic_slug, user_id, content, tags, source_message_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (note_id, c_id, slug, u_id, texto, tags_json, str(source_message_id) if source_message_id else None),
-        )
-        conn.commit()
+    def _inserir_nota_sync() -> None:
+        with _get_connection(db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO channel_notes (id, channel_id, topic_slug, user_id, content, tags, source_message_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (note_id, c_id, slug, u_id, texto, tags_json, str(source_message_id) if source_message_id else None),
+            )
+            conn.commit()
+
+    await asyncio.to_thread(_inserir_nota_sync)
 
     # 2. Indexação Vetorial no ChromaDB (topic_notes_{channel_id})
     try:
