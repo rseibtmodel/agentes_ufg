@@ -35,34 +35,39 @@ class CommandContext:
         return self.message.channel
 
     async def reply(self, content: str, view: Optional[discord.ui.View] = None) -> List[discord.Message]:
-        """Responde referenciando a mensagem original do usuário.
+        """Responde referenciando a mensagem original do usuário através do Message Gateway (Outbox).
         
         Divide automaticamente respostas longas (> 1900 caracteres) em múltiplos blocos.
         Suporta componentes de interface interativos (discord.ui.View) anexados.
-        Caso o bot não possua permissão 'Read Message History' (código 160002)
-        no canal para responder com citação, envia diretamente com menção via Message Gateway.
+        100% dos despachos são canalizados pelo message_gateway, preservando controle anti-spam
+        e limites de taxa da API do Discord.
         """
+        from message_gateway import message_gateway, MessagePriority
         blocos = dividir_mensagem(content, limite=1900)
         mensagens = []
         primeiro = True
         for bloco in blocos:
             v = view if primeiro else None
+            ref = self.message if primeiro else None
             try:
-                if primeiro:
-                    if v is not None:
-                        msg = await self.message.reply(bloco, view=v)
-                    else:
-                        msg = await self.message.reply(bloco)
-                    primeiro = False
-                else:
-                    from message_gateway import message_gateway, MessagePriority
-                    msg = await message_gateway.dispatch(self.channel, content=bloco, priority=MessagePriority.HIGH)
+                msg = await message_gateway.dispatch(
+                    self.channel,
+                    content=bloco,
+                    view=v,
+                    priority=MessagePriority.HIGH,
+                    reference=ref,
+                )
+                primeiro = False
                 if msg:
                     mensagens.append(msg)
             except discord.Forbidden:
-                from message_gateway import message_gateway, MessagePriority
                 texto = f"{self.author.mention}\n{bloco}" if primeiro else bloco
-                msg = await message_gateway.dispatch(self.channel, content=texto, view=v, priority=MessagePriority.HIGH)
+                msg = await message_gateway.dispatch(
+                    self.channel,
+                    content=texto,
+                    view=v,
+                    priority=MessagePriority.HIGH,
+                )
                 primeiro = False
                 if msg:
                     mensagens.append(msg)

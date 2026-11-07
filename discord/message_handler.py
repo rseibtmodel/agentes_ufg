@@ -68,6 +68,8 @@ async def _send_gateway(
     file: Optional[discord.File] = None,
     files: Optional[List[discord.File]] = None,
     view: Optional[discord.ui.View] = None,
+    reference: Optional[Any] = None,
+    delete_after_send: Optional[Any] = None,
 ) -> Any:
     """Despacha mensagem pelo Barramento Centralizado (IDEA-24) com Fast-Path prioritário (<100ms)."""
     return await message_gateway.dispatch(
@@ -78,6 +80,8 @@ async def _send_gateway(
         files=files,
         view=view,
         priority=MessagePriority.HIGH,
+        reference=reference,
+        delete_after_send=delete_after_send,
     )
 
 
@@ -288,18 +292,15 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
         msg_confirmacao = f"🔊 {res['mensagem']}"
         if modo_solicitado in ("audio", "ambos"):
             caminho_audio, _ = await sintetizar_fala_edge(res["mensagem"])
-            try:
-                if caminho_audio and caminho_audio.exists():
-                    await _send_gateway(
-                        message.channel,
-                        content=msg_confirmacao,
-                        file=discord.File(str(caminho_audio), filename="resposta.mp3"),
-                    )
-                else:
-                    await _send_gateway(message.channel, content=msg_confirmacao)
-            finally:
-                if caminho_audio and caminho_audio.exists():
-                    caminho_audio.unlink()
+            if caminho_audio and caminho_audio.exists():
+                await _send_gateway(
+                    message.channel,
+                    content=msg_confirmacao,
+                    file=discord.File(str(caminho_audio), filename="resposta.mp3"),
+                    delete_after_send=caminho_audio,
+                )
+            else:
+                await _send_gateway(message.channel, content=msg_confirmacao)
         else:
             await _send_gateway(message.channel, content=msg_confirmacao)
         return
@@ -516,8 +517,9 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
             # =================================================================
             modo_resposta = obter_modo_resposta(user_id)
             caminho_audio = None
+            audio_delegado_gateway = False
 
-            views_pendentes = get_pending_views(user_name)
+            views_pendentes = get_pending_views(user_id) or get_pending_views(user_name)
             view_to_attach = views_pendentes.pop(0) if views_pendentes else None
 
             try:
@@ -531,11 +533,13 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
                     # Opção 2: Apenas Áudio (Francisca pt-BR via edge-tts)
                     caminho_audio, erro_tts = await sintetizar_fala_edge(resposta_texto)
                     if caminho_audio and caminho_audio.exists():
+                        audio_delegado_gateway = True
                         await _send_gateway(
                             message.channel,
                             content="🎙️ **Resposta em áudio (Francisca):**",
                             file=discord.File(str(caminho_audio), filename="resposta.mp3"),
                             view=view_to_attach,
+                            delete_after_send=caminho_audio,
                         )
                     else:
                         logger.warning("Falha na síntese de áudio: %s. Enviando texto como fallback.", erro_tts)
@@ -551,27 +555,29 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
 
                     caminho_audio, erro_tts = await sintetizar_fala_edge(resposta_texto)
                     if caminho_audio and caminho_audio.exists():
+                        audio_delegado_gateway = True
                         await _send_gateway(
                             message.channel,
                             content="🎙️ **Narração em áudio (Francisca):**",
                             file=discord.File(str(caminho_audio), filename="resposta.mp3"),
+                            delete_after_send=caminho_audio,
                         )
                     else:
                         logger.warning("Falha na síntese de áudio para modo ambos: %s", erro_tts)
 
             finally:
-                # REGRA CRÍTICA: Apaga arquivos temporários imediatamente
-                if caminho_audio and caminho_audio.exists():
+                # Se o áudio NÃO foi delegado ao Gateway para envio, apaga aqui
+                if not audio_delegado_gateway and caminho_audio and caminho_audio.exists():
                     try:
                         caminho_audio.unlink()
-                        logger.info("Arquivo temporário de resposta TTS removido: %s", caminho_audio)
+                        logger.info("Arquivo temporário de resposta TTS não despachado removido: %s", caminho_audio)
                     except Exception as ex_del:
                         logger.warning("Falha ao remover arquivo temporário TTS %s: %s", caminho_audio, ex_del)
 
             # =================================================================
             # ENTREGA DE ARQUIVOS PDF AGENDADOS PELAS TOOLS
             # =================================================================
-            arquivos_pendentes = get_pending_files()
+            arquivos_pendentes = get_pending_files(user_id) or get_pending_files(user_name)
             for arq_path in arquivos_pendentes:
                 if arq_path.exists():
                     await _send_gateway(
@@ -621,5 +627,7 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
 
         finally:
             # Garante que as filas de anexos e views sejam sempre resetadas para a próxima mensagem
+            clear_pending_files(user_id)
             clear_pending_files(user_name)
+            clear_pending_views(user_id)
             clear_pending_views(user_name)

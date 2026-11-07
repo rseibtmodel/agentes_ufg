@@ -6,10 +6,12 @@ os arquivos PDF agendados para envio como anexo no Discord, garantindo compatibi
 entre o loop de eventos assíncrono e threads auxiliares (`asyncio.to_thread`).
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 # ContextVar para rastreamento assíncrono seguro
 _current_user_var: ContextVar[str] = ContextVar("current_user", default="default")
@@ -18,9 +20,19 @@ _current_channel_id_var: ContextVar[str] = ContextVar("current_channel_id", defa
 _current_guild_id_var: ContextVar[str] = ContextVar("current_guild_id", default="")
 _current_channel_name_var: ContextVar[str] = ContextVar("current_channel_name", default="")
 
-# Dicionários compartilhados thread-safe em nível de processo indexados por usuário
+# Dicionários compartilhados thread-safe em nível de processo indexados por identificador de usuário
 _pending_files_by_user: Dict[str, List[Path]] = defaultdict(list)
 _pending_views_by_user: Dict[str, List[Any]] = defaultdict(list)
+
+
+def _resolve_user_key(user: Optional[str | int] = None) -> str:
+    """Resolve a chave canônica do usuário para isolamento de estado, priorizando user_id."""
+    if user is not None and str(user).strip():
+        return str(user).strip()
+    user_id = get_current_user_id()
+    if user_id:
+        return user_id
+    return get_current_user() or "default"
 
 
 def set_current_user(user: str) -> None:
@@ -88,40 +100,40 @@ def set_contexto_requisicao(
     set_current_channel_name(channel_name)
 
 
-def clear_pending_files(user: Optional[str] = None) -> None:
+def clear_pending_files(user: Optional[str | int] = None) -> None:
     """Limpa a lista de arquivos pendentes de envio para o usuário."""
-    usuario = user or get_current_user()
-    _pending_files_by_user[usuario].clear()
+    chave = _resolve_user_key(user)
+    _pending_files_by_user[chave].clear()
 
 
-def add_pending_file(path: Path, user: Optional[str] = None) -> None:
+def add_pending_file(path: Path, user: Optional[str | int] = None) -> None:
     """Registra um arquivo para ser enviado como anexo no Discord."""
-    usuario = user or get_current_user()
-    if path not in _pending_files_by_user[usuario]:
-        _pending_files_by_user[usuario].append(path)
+    chave = _resolve_user_key(user)
+    if path not in _pending_files_by_user[chave]:
+        _pending_files_by_user[chave].append(path)
 
 
-def get_pending_files(user: Optional[str] = None) -> List[Path]:
+def get_pending_files(user: Optional[str | int] = None) -> List[Path]:
     """Retorna os arquivos pendentes para envio como anexo no Discord."""
-    usuario = user or get_current_user()
-    return list(_pending_files_by_user[usuario])
+    chave = _resolve_user_key(user)
+    return list(_pending_files_by_user[chave])
 
 
-def add_pending_view(view: Any, user: Optional[str] = None) -> None:
+def add_pending_view(view: Any, user: Optional[str | int] = None) -> None:
     """Agenda uma discord.ui.View para ser anexada à mensagem de resposta."""
-    usuario = user or get_current_user()
-    _pending_views_by_user[usuario].append(view)
+    chave = _resolve_user_key(user)
+    _pending_views_by_user[chave].append(view)
 
 
-def get_pending_views(user: Optional[str] = None) -> List[Any]:
+def get_pending_views(user: Optional[str | int] = None) -> List[Any]:
     """Retorna as views interativas agendadas para o usuário atual."""
-    usuario = user or get_current_user()
-    return list(_pending_views_by_user[usuario])
+    chave = _resolve_user_key(user)
+    return list(_pending_views_by_user[chave])
 
 
-def clear_pending_views(user: Optional[str] = None) -> None:
+def clear_pending_views(user: Optional[str | int] = None) -> None:
     """Limpa a lista de views interativas agendadas para o usuário."""
-    usuario = user or get_current_user()
-    if usuario in _pending_views_by_user:
-        _pending_views_by_user[usuario].clear()
+    chave = _resolve_user_key(user)
+    if chave in _pending_views_by_user:
+        _pending_views_by_user[chave].clear()
 

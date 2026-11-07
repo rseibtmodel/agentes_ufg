@@ -4,6 +4,7 @@ Comandos Embutidos do Bot (!ajuda, !ping, !limpar, !historico, !hora, !modelo, !
 Implementações de comandos de controle, diagnóstico e utilidades para o usuário.
 """
 
+import asyncio
 import logging
 
 import discord
@@ -947,9 +948,9 @@ async def cmd_limpar_memoria(ctx: CommandContext):
     aliases=["calendario", "compromissos", "eventos"],
 )
 async def cmd_agenda(ctx: CommandContext):
-    """Consulta a agenda do Google Calendar."""
+    """Consulta a agenda do Google Calendar de forma assíncrona/não-bloqueante."""
     dias = int(ctx.args[0]) if ctx.args and ctx.args[0].isdigit() else 7
-    res = listar_compromissos(dias_a_frente=dias)
+    res = await asyncio.to_thread(listar_compromissos, dias_a_frente=dias)
 
     if not res.get("sucesso"):
         await ctx.reply(f"⚠️ {res.get('erro')}")
@@ -979,7 +980,7 @@ async def cmd_agenda(ctx: CommandContext):
     aliases=["marcar", "novo_evento"],
 )
 async def cmd_agendar(ctx: CommandContext):
-    """Adiciona evento na agenda do Google."""
+    """Adiciona evento na agenda do Google de forma assíncrona/não-bloqueante."""
     if not ctx.arg_str or "|" not in ctx.arg_str:
         await ctx.reply(
             f"❓ Formato inválido. Use barra vertical `|` para separar o título da data/hora.\n"
@@ -992,7 +993,7 @@ async def cmd_agendar(ctx: CommandContext):
     inicio = partes[1]
     fim = partes[2] if len(partes) > 2 else ""
 
-    res = adicionar_compromisso(titulo=titulo, inicio=inicio, fim=fim)
+    res = await asyncio.to_thread(adicionar_compromisso, titulo=titulo, inicio=inicio, fim=fim)
     if not res.get("sucesso"):
         await ctx.reply(f"⚠️ {res.get('erro')}")
         return
@@ -1013,13 +1014,13 @@ async def cmd_agendar(ctx: CommandContext):
     aliases=["cancelar_evento", "remover_evento"],
 )
 async def cmd_desmarcar(ctx: CommandContext):
-    """Remove evento da agenda do Google."""
+    """Remove evento da agenda do Google de forma assíncrona/não-bloqueante."""
     if not ctx.args:
         await ctx.reply(f"❓ Por favor, informe o nome ou ID do evento a remover. Exemplo: `{COMMAND_PREFIX}desmarcar Dentista`")
         return
 
     termo = ctx.arg_str
-    res = remover_compromisso(termo_ou_id=termo)
+    res = await asyncio.to_thread(remover_compromisso, termo_ou_id=termo)
 
     if not res.get("sucesso"):
         await ctx.reply(f"⚠️ {res.get('erro')}")

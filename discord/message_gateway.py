@@ -56,6 +56,8 @@ class OutboxItem:
     files: Optional[List[discord.File]] = field(default=None, compare=False)
     view: Optional[discord.ui.View] = field(default=None, compare=False)
     content_hash: str = field(default="", compare=False)
+    reference: Optional[Any] = field(default=None, compare=False)
+    delete_after_send: Optional[List[Path]] = field(default=None, compare=False)
 
 
 class MessageGateway:
@@ -202,8 +204,18 @@ class MessageGateway:
 
         return False
 
-    async def _send_raw(self, target: Any, content: Optional[str] = None, embed: Optional[discord.Embed] = None, file: Optional[discord.File] = None, files: Optional[List[discord.File]] = None, view: Optional[discord.ui.View] = None) -> Any:
-        """Executa a chamada física de envio ao Discord."""
+    async def _send_raw(
+        self,
+        target: Any,
+        content: Optional[str] = None,
+        embed: Optional[discord.Embed] = None,
+        file: Optional[discord.File] = None,
+        files: Optional[List[discord.File]] = None,
+        view: Optional[discord.ui.View] = None,
+        reference: Optional[Any] = None,
+        delete_after_send: Optional[List[Path]] = None,
+    ) -> Any:
+        """Executa a chamada física de envio ao Discord com limpeza garantida de temporários."""
         kwargs: Dict[str, Any] = {}
         if content is not None:
             kwargs["content"] = content
@@ -215,10 +227,32 @@ class MessageGateway:
             kwargs["files"] = files
         if view is not None:
             kwargs["view"] = view
+        if reference is not None:
+            kwargs["reference"] = reference
 
-        if hasattr(target, "send"):
-            return await target.send(**kwargs)
-        raise ValueError(f"Objeto de destino '{target}' não suporta método send().")
+        try:
+            if hasattr(target, "send"):
+                try:
+                    return await target.send(**kwargs)
+                except discord.HTTPException as err:
+                    # Se falhou por causa da mensagem de referência (apagada ou sem permissão de histórico)
+                    if "reference" in kwargs and getattr(err, "code", None) in (160002, 50035, 10008):
+                        kwargs.pop("reference", None)
+                        return await target.send(**kwargs)
+                    raise
+            elif hasattr(target, "reply"):
+                kwargs.pop("reference", None)
+                return await target.reply(**kwargs)
+            raise ValueError(f"Objeto de destino '{target}' não suporta método send() nem reply().")
+        finally:
+            if delete_after_send:
+                for p in delete_after_send:
+                    try:
+                        if p and p.exists():
+                            p.unlink()
+                            logger.info("Arquivo temporário removido pelo Message Gateway: %s", p)
+                    except Exception as ex_del:
+                        logger.warning("Falha ao remover arquivo temporário %s no Gateway: %s", p, ex_del)
 
     async def dispatch(
         self,
@@ -230,16 +264,36 @@ class MessageGateway:
         view: Optional[discord.ui.View] = None,
         priority: MessagePriority = MessagePriority.HIGH,
         forcar_dedup: bool = False,
+        reference: Optional[Any] = None,
+        delete_after_send: Optional[Union[List[Path], Path]] = None,
     ) -> Optional[Any]:
         """
         Ponto único de despacho de mensagens do bot.
         
         - Prioridade 1 (HIGH): Envio direto e ultrarrápido (Fast-Path < 100ms) se canal ocioso.
         - Prioridade 2 (BACKGROUND): Enfileirado para envio cadenciado via Leaky Bucket.
+        - delete_after_send: Garante que arquivos temporários (como áudio TTS) só sejam apagados após o despacho efetivo.
         """
+        # Normaliza arquivos para deleção pós-envio
+        del_paths: Optional[List[Path]] = None
+        if delete_after_send:
+            if isinstance(delete_after_send, (list, tuple)):
+                del_paths = [Path(p) for p in delete_after_send]
+            else:
+                del_paths = [Path(delete_after_send)]
+
         if not self.enabled:
             # Bypass de emergência caso o gateway seja desativado em config
-            return await self._send_raw(target, content, embed, file, files, view)
+            return await self._send_raw(
+                target,
+                content=content,
+                embed=embed,
+                file=file,
+                files=files,
+                view=view,
+                reference=reference,
+                delete_after_send=del_paths,
+            )
 
         channel_id = str(getattr(target, "id", "global"))
         c_hash = self._generate_hash(channel_id, content, file, files)
@@ -254,6 +308,14 @@ class MessageGateway:
                 c_hash[:8],
             )
             self._record_audit(msg_id, channel_id, int(priority), content, c_hash, status="discarded_duplicate")
+            # Se descartou como duplicata, limpa arquivos temporários agendados
+            if del_paths:
+                for p in del_paths:
+                    try:
+                        if p and p.exists():
+                            p.unlink()
+                    except Exception:
+                        pass
             return None
 
         # 2. Verificação de Circuit Breaker
@@ -265,7 +327,16 @@ class MessageGateway:
 
         if priority == MessagePriority.HIGH and not is_breaker_open and time_since_last >= 0.2:
             try:
-                sent_msg = await self._send_raw(target, content, embed, file, files, view)
+                sent_msg = await self._send_raw(
+                    target,
+                    content=content,
+                    embed=embed,
+                    file=file,
+                    files=files,
+                    view=view,
+                    reference=reference,
+                    delete_after_send=del_paths,
+                )
                 self._last_send_per_channel[channel_id] = time.time()
                 self.stats["total_dispatched"] += 1
                 self.stats["fast_path_sent"] += 1
@@ -277,6 +348,13 @@ class MessageGateway:
                 else:
                     logger.error("Erro no Fast-Path do Message Gateway: %s", err)
                     self.stats["failed_dispatches"] += 1
+                    if del_paths:
+                        for p in del_paths:
+                            try:
+                                if p and p.exists():
+                                    p.unlink()
+                            except Exception:
+                                pass
                     return None
 
         # 4. Enfileiramento na Fila Prioritária (Leaky Bucket)
@@ -292,6 +370,8 @@ class MessageGateway:
             files=files,
             view=view,
             content_hash=c_hash,
+            reference=reference,
+            delete_after_send=del_paths,
         )
         await self._queue.put(item)
         self._record_audit(msg_id, channel_id, int(priority), content, c_hash, status="enqueued")
@@ -323,6 +403,13 @@ class MessageGateway:
                 if self._circuit_breakers.get(channel_id) and item.priority > 1:
                     logger.warning("Circuit Breaker ativo para %s. Descartando mensagem de background %s.", channel_id, item.msg_id[:8])
                     self._record_audit(item.msg_id, channel_id, item.priority, item.content, item.content_hash, status="circuit_breaker_drop")
+                    if item.delete_after_send:
+                        for p in item.delete_after_send:
+                            try:
+                                if p and p.exists():
+                                    p.unlink()
+                            except Exception:
+                                pass
                     self._queue.task_done()
                     continue
 
@@ -334,6 +421,8 @@ class MessageGateway:
                         file=item.file,
                         files=item.files,
                         view=item.view,
+                        reference=item.reference,
+                        delete_after_send=item.delete_after_send,
                     )
                     self._last_send_per_channel[channel_id] = time.time()
                     self.stats["total_dispatched"] += 1
@@ -349,9 +438,23 @@ class MessageGateway:
                     else:
                         logger.error("Falha ao despachar mensagem %s da fila: %s", item.msg_id[:8], err)
                         self.stats["failed_dispatches"] += 1
+                        if item.delete_after_send:
+                            for p in item.delete_after_send:
+                                try:
+                                    if p and p.exists():
+                                        p.unlink()
+                                except Exception:
+                                    pass
                 except Exception as err:
                     logger.error("Erro inesperado ao despachar item %s: %s", item.msg_id[:8], err)
                     self.stats["failed_dispatches"] += 1
+                    if item.delete_after_send:
+                        for p in item.delete_after_send:
+                            try:
+                                if p and p.exists():
+                                    p.unlink()
+                            except Exception:
+                                pass
 
                 self._queue.task_done()
 

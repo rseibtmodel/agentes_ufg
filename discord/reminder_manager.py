@@ -29,6 +29,14 @@ def _get_db_path(db_path: Optional[str] = None) -> str:
     return str(caminho)
 
 
+def _get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
+    """Abre uma conexão SQLite configurada com timeout de 30s e WAL mode para alta concorrência."""
+    caminho = _get_db_path(db_path)
+    conn = sqlite3.connect(caminho, timeout=30.0)
+    conn.execute("PRAGMA journal_mode = WAL;")
+    return conn
+
+
 def _get_timezone() -> zoneinfo.ZoneInfo:
     """Obtém o fuso horário configurado."""
     try:
@@ -44,8 +52,7 @@ def get_agora() -> datetime:
 
 def init_reminder_db(db_path: Optional[str] = None) -> None:
     """Inicializa a tabela de lembretes no SQLite."""
-    caminho = _get_db_path(db_path)
-    with sqlite3.connect(caminho) as conn:
+    with _get_connection(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -200,10 +207,9 @@ def criar_lembrete(
             "mensagem": f"O horário agendado ({quando_dt.strftime('%d/%m/%Y %H:%M:%S')}) já passou. Informe uma data/hora no futuro.",
         }
 
-    caminho = _get_db_path(db_path)
     remind_at_iso = quando_dt.isoformat()
 
-    with sqlite3.connect(caminho) as conn:
+    with _get_connection(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -236,10 +242,9 @@ def criar_lembrete(
 
 def obter_lembretes_vencidos(db_path: Optional[str] = None) -> List[Dict[str, Any]]:
     """Busca no banco todos os lembretes pendentes cujo horário de disparo já chegou."""
-    caminho = _get_db_path(db_path)
     agora_iso = get_agora().isoformat()
 
-    with sqlite3.connect(caminho) as conn:
+    with _get_connection(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -271,8 +276,7 @@ def atualizar_status_lembrete(
     db_path: Optional[str] = None,
 ) -> None:
     """Atualiza o status do lembrete ('disparado', 'cancelado', 'erro')."""
-    caminho = _get_db_path(db_path)
-    with sqlite3.connect(caminho) as conn:
+    with _get_connection(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE reminders SET status = ? WHERE id = ?",
@@ -287,10 +291,9 @@ def listar_lembretes_usuario(
     db_path: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Lista os lembretes de um usuário específico."""
-    caminho = _get_db_path(db_path)
     user_str = str(user_id)
 
-    with sqlite3.connect(caminho) as conn:
+    with _get_connection(db_path) as conn:
         cursor = conn.cursor()
         if apenas_pendentes:
             cursor.execute(
@@ -338,10 +341,9 @@ def cancelar_lembrete(
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Cancela um lembrete pendente do usuário."""
-    caminho = _get_db_path(db_path)
     user_str = str(user_id)
 
-    with sqlite3.connect(caminho) as conn:
+    with _get_connection(db_path) as conn:
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -383,8 +385,7 @@ def concluir_lembrete(
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Marca um lembrete como concluído com sucesso."""
-    caminho = _get_db_path(db_path)
-    with sqlite3.connect(caminho) as conn:
+    with _get_connection(db_path) as conn:
         cursor = conn.cursor()
         if user_id:
             cursor.execute(
@@ -417,12 +418,11 @@ def adiar_lembrete(
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Adia um lembrete para daqui a N minutos (ou horas) e reabre como pendente."""
-    caminho = _get_db_path(db_path)
     agora = get_agora()
     nova_data = agora + timedelta(minutes=minutos)
     nova_data_iso = nova_data.isoformat()
 
-    with sqlite3.connect(caminho) as conn:
+    with _get_connection(db_path) as conn:
         cursor = conn.cursor()
         if user_id:
             cursor.execute(
