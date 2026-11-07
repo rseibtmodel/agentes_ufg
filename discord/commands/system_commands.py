@@ -30,6 +30,7 @@ from digest_manager import (
     enviar_resumo_matinal,
     obter_configuracao_digest,
 )
+from agy_manager import agy_manager
 from message_gateway import message_gateway
 from utils import obter_hora_formatada
 
@@ -101,6 +102,8 @@ async def cmd_ajuda(ctx: CommandContext) -> None:
             "  Mostra a quantidade de mensagens salvas e o histórico imediato recente.",
             f"• `{COMMAND_PREFIX}gateway [status|pausar|retomar|limpar]`",
             "  Telemetria e controle anti-spam do barramento unificado de saída (Outbox).",
+            f"• `{COMMAND_PREFIX}agy [skills|info|status|consultar]`",
+            "  Inspeção e consultas às skills e agentes locais em modo Read-Only.",
             f"• `{COMMAND_PREFIX}ajuda`",
             "  Retorna ao menu principal de blocos de ajuda.",
         ]
@@ -674,4 +677,105 @@ async def cmd_gateway(ctx: CommandContext) -> None:
         return
 
     await ctx.reply(f"❓ Subcomando desconhecido. Use: `{COMMAND_PREFIX}gateway [status|pausar|retomar|limpar]`")
+
+
+@register_command(
+    name="agy",
+    description="Controlador do Antigravity Remote Runner (Leitura, Telemetria & Consulta de Agentes — IDEA-23).",
+    usage=f"{COMMAND_PREFIX}agy [skills|info|status|consultar] [argumentos]",
+    aliases=["agentes", "skills_locais"],
+)
+async def cmd_agy(ctx: CommandContext) -> None:
+    """Gerencia a inspeção e consultas analíticas aos agentes e skills locais."""
+    sub = ctx.args[0].lower() if ctx.args else "skills"
+
+    if sub in ("skills", "listar", "list"):
+        skills = agy_manager.listar_skills()
+        if not skills:
+            await ctx.reply("⚠️ Nenhuma skill ou agente encontrado no diretório `.agents/skills/`.")
+            return
+
+        linhas = [
+            f"🧠 **CATÁLOGO DE SKILLS & AGENTES LOCAIS ({len(skills)}):**",
+            "*(Para consultar a persona de um agente, use: `!agy consultar <nome> <sua dúvida>`)*\n",
+        ]
+        for s in skills:
+            desc_curta = (s["description"][:110] + "...") if len(s["description"]) > 110 else s["description"]
+            linhas.append(f"• **`{s['name']}`** (`.agents/skills/{s['pasta']}/`)\n  └ {desc_curta}")
+
+        await ctx.reply("\n".join(linhas))
+        return
+
+    if sub in ("info", "detalhes"):
+        if len(ctx.args) < 2:
+            await ctx.reply(f"❌ Informe o nome da skill. Exemplo: `{COMMAND_PREFIX}agy info critic`")
+            return
+
+        nome_alvo = ctx.args[1]
+        skill = agy_manager.obter_skill(nome_alvo)
+        if not skill:
+            await ctx.reply(f"❌ Skill ou agente `{nome_alvo}` não encontrado em `.agents/skills/`.")
+            return
+
+        corpo_preview = skill["corpo"][:900] + ("..." if len(skill["corpo"]) > 900 else "")
+        msg = (
+            f"📋 **INSPEÇÃO DE SKILL: `{skill['name']}`**\n"
+            f"📁 **Pasta:** `{skill['pasta']}`\n"
+            f"📄 **Arquivo:** `{skill['path']}`\n\n"
+            f"📝 **Descrição:**\n{skill['description']}\n\n"
+            f"📜 **Diretrizes (Trecho):**\n```markdown\n{corpo_preview}\n```"
+        )
+        await ctx.reply(msg)
+        return
+
+    if sub in ("status", "telemetria"):
+        st = agy_manager.obter_status_telemetria()
+        msg = (
+            "⚡ **TELEMETRIA DO RUNTIME LOCAL (AGY Remote Runner)**\n"
+            f"• **Modo:** `{st['modo_execucao']}`\n"
+            f"• **Uptime do Processo:** `{st['uptime']}`\n"
+            f"• **Memória RAM Alocada:** `{st['memoria_processo_mb']} MB`\n"
+            f"• **Plataforma / CPU:** `{st['plataforma']} ({st['arquitetura']})`\n"
+            f"• **PID do Processo:** `{st['pid']}`\n"
+            f"• **Tarefas Assíncronas Ativas:** `{st['tarefas_async_ativas']}`\n"
+            f"• **Skills Locais Prontas:** `{st['total_skills_locais']}`"
+        )
+        await ctx.reply(msg)
+        return
+
+    if sub in ("consultar", "ask", "perguntar"):
+        if len(ctx.args) < 3:
+            await ctx.reply(
+                f"❌ Uso correto: `{COMMAND_PREFIX}agy consultar <skill> <sua dúvida ou tema>`\n"
+                f"Exemplo: `{COMMAND_PREFIX}agy consultar critic Quais os riscos de concorrência no SQLite WAL?`"
+            )
+            return
+
+        nome_skill = ctx.args[1]
+        consulta = " ".join(ctx.args[2:])
+
+        await ctx.reply(f"⏳ **Consultando o especialista `{nome_skill}`...** Aguarde a análise.")
+        res = await agy_manager.consultar_skill(
+            nome_skill=nome_skill,
+            consulta=consulta,
+            user_id=str(ctx.author.id),
+        )
+
+        if not res.get("sucesso"):
+            await ctx.reply(f"❌ **Falha na consulta:** {res.get('erro')}")
+            return
+
+        dados = res["dados"]
+        resposta_texto = dados["resposta"]
+        if len(resposta_texto) > 1850:
+            resposta_texto = resposta_texto[:1840] + "\n\n*(Resposta truncada devido ao limite de caracteres do Discord)*"
+
+        msg = (
+            f"🎭 **PARECER DO ESPECIALISTA (`{dados['skill']}`):**\n\n"
+            f"{resposta_texto}"
+        )
+        await ctx.reply(msg)
+        return
+
+    await ctx.reply(f"❓ Subcomando desconhecido. Use: `{COMMAND_PREFIX}agy [skills|info|status|consultar]`")
 
