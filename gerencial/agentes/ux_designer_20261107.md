@@ -30,3 +30,4 @@ A calibração foi conduzida pelo `/gerente` seguindo a **Rota 3 (Rito Formal de
 - [x] `.agents/rules/ux_designer.md` (Regras operacionais atualizadas na branch `project/antigravity-discord-bot`)
 - [x] `.agents/skills/ux_designer/SKILL.md` (Definição da skill atualizada)
 - [x] `.agents/AGENTS.md` (Catálogo consolidado atualizado na seção do Agente 4)
+
