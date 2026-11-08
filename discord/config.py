@@ -90,7 +90,7 @@ TTS_DEFAULT_MODE = os.getenv("TTS_DEFAULT_MODE", "texto")
 WEB_SEARCH_ENABLED = os.getenv("WEB_SEARCH_ENABLED", "true").lower() in ("true", "1", "yes")
 WEB_SEARCH_PROVIDER = os.getenv("WEB_SEARCH_PROVIDER", "duckduckgo").lower()
 WEB_SEARCH_MAX_RESULTS = int(os.getenv("WEB_SEARCH_MAX_RESULTS", "4"))
-WEB_SEARCH_TIMEOUT = float(os.getenv("WEB_SEARCH_TIMEOUT", "12.0"))
+WEB_SEARCH_TIMEOUT = float(os.getenv("WEB_SEARCH_TIMEOUT", "18.0"))
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 SEARXNG_URL = os.getenv("SEARXNG_URL", "")
 

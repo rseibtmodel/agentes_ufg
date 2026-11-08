@@ -116,11 +116,14 @@ class DeepResearchManager:
         max_fontes_total: int = 10,
     ) -> List[Dict[str, str]]:
         """Busca e extrai o conteúdo de artigos web em paralelo com controle de concorrência."""
-        # 1. Coleta URLs candidatas
-        tarefas_busca = [
-            web_search_manager.buscar_na_web(query=q, max_resultados=3)
-            for q in subconsultas
-        ]
+        # 1. Coleta URLs candidatas com controle de concorrência
+        semaphore_busca = asyncio.Semaphore(2)
+
+        async def _buscar_com_limite(query: str) -> List[Dict[str, str]]:
+            async with semaphore_busca:
+                return await web_search_manager.buscar_na_web(query=query, max_resultados=3)
+
+        tarefas_busca = [_buscar_com_limite(q) for q in subconsultas]
         resultados_busca = await asyncio.gather(*tarefas_busca, return_exceptions=True)
 
         urls_vistas = set()
@@ -136,15 +139,33 @@ class DeepResearchManager:
                     if len(candidatos) >= max_fontes_total:
                         break
 
+        # Fallback de busca: se nenhuma URL foi encontrada nas subconsultas detalhadas, tenta termos essenciais
+        if not candidatos:
+            logger.info("Nenhuma fonte encontrada nas subconsultas. Ativando busca simplificada de fallback...")
+            for q_fallback in subconsultas:
+                termos = [t for t in q_fallback.split() if len(t) > 2 and t.lower() not in ("comparativo", "analise", "estado", "arte", "vantagens", "desvantagens", "melhores", "praticas", "recomendacoes")]
+                if termos:
+                    q_simples = " ".join(termos[:5])
+                    res_simples = await web_search_manager.buscar_na_web(query=q_simples, max_resultados=3)
+                    if isinstance(res_simples, list):
+                        for item in res_simples:
+                            url = (item.get("url") or item.get("href") or "").strip()
+                            if url and url not in urls_vistas:
+                                urls_vistas.add(url)
+                                item["url"] = url
+                                candidatos.append(item)
+                    if candidatos:
+                        break
+
         # 2. Raspagem concorrente com semáforo (máximo 3 conexões simultâneas)
         semaphore = asyncio.Semaphore(3)
 
         async def _ler_com_limite(candidato: Dict[str, str]) -> Optional[Dict[str, str]]:
             async with semaphore:
+                url = candidato["url"]
+                titulo_candidato = candidato.get("titulo") or candidato.get("title") or "Fonte Web"
                 try:
-                    url = candidato["url"]
                     conteudo_res = await web_search_manager.ler_pagina_web(url, max_caracteres=2800)
-                    titulo_candidato = candidato.get("titulo") or candidato.get("title") or "Fonte Web"
                     if isinstance(conteudo_res, dict):
                         if conteudo_res.get("sucesso") and conteudo_res.get("conteudo"):
                             return {
@@ -159,7 +180,18 @@ class DeepResearchManager:
                             "texto": conteudo_res,
                         }
                 except Exception as err:
-                    logger.debug("Falha na raspagem da URL %s: %s", candidato.get("url"), err)
+                    logger.debug("Falha na raspagem da URL %s: %s", url, err)
+
+                # Fallback defensivo: se a raspagem da página falhar (Cloudflare, bloqueio bot ou 403),
+                # utiliza o snippet do próprio buscador para não descartar a evidência
+                snippet = candidato.get("resumo") or candidato.get("snippet") or ""
+                if snippet and len(snippet) > 30:
+                    return {
+                        "titulo": titulo_candidato,
+                        "url": url,
+                        "texto": f"[Trecho relevante capturado na web]: {snippet}",
+                    }
+
                 return None
 
         tarefas_leitura = [_ler_com_limite(c) for c in candidatos]

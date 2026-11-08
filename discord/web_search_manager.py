@@ -100,34 +100,47 @@ class WebSearchManager:
             return []
 
     async def _buscar_duckduckgo(self, query: str, max_resultados: int) -> List[Dict[str, str]]:
-        """Busca assíncrona via biblioteca ddgs / DuckDuckGo."""
-        def _executar_ddgs():
+        """Busca assíncrona resiliente via ddgs (com failover entre Yahoo e Auto)."""
+        def _executar_ddgs() -> List[Dict[str, str]]:
             try:
                 from ddgs import DDGS
             except ImportError:
                 from duckduckgo_search import DDGS
 
-            resultados_formatados = []
-            with DDGS() as ddgs:
-                # Usa text() para busca ampla e estável
-                raw_results = ddgs.text(query, max_results=max_resultados)
-                for item in raw_results:
-                    titulo = (item.get("title") or "").strip()
-                    url = (item.get("href") or item.get("link") or "").strip()
-                    resumo = (item.get("body") or item.get("snippet") or "").strip()
-                    if titulo and url:
-                        resultados_formatados.append({
-                            "titulo": titulo,
-                            "url": url,
-                            "resumo": resumo,
-                            "fonte": "DuckDuckGo",
-                        })
-            return resultados_formatados
+            backends = ["yahoo", "auto"]
+            for backend in backends:
+                try:
+                    with DDGS(timeout=6) as ddgs:
+                        raw_results = ddgs.text(query, backend=backend, max_results=max_resultados)
+                        if raw_results:
+                            formatados = []
+                            for item in raw_results:
+                                titulo = (item.get("title") or "").strip()
+                                url = (item.get("href") or item.get("link") or "").strip()
+                                resumo = (item.get("body") or item.get("snippet") or "").strip()
+                                if titulo and url:
+                                    formatados.append({
+                                        "titulo": titulo,
+                                        "url": url,
+                                        "resumo": resumo,
+                                        "fonte": "DuckDuckGo" if backend == "auto" else f"Web ({backend.title()})",
+                                    })
+                            if formatados:
+                                return formatados
+                except Exception as ex:
+                    logger.debug("Tentativa no backend '%s' para '%s' falhou: %s", backend, query, ex)
+                    continue
 
-        return await asyncio.wait_for(
-            asyncio.to_thread(_executar_ddgs),
-            timeout=self.timeout,
-        )
+            return []
+
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(_executar_ddgs),
+                timeout=self.timeout,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Timeout na busca web para a query '%s'.", query)
+            return []
 
     async def _buscar_tavily(self, query: str, max_resultados: int) -> List[Dict[str, str]]:
         """Busca assíncrona via Tavily Search API."""
