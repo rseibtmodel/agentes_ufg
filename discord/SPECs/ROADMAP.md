@@ -1,6 +1,6 @@
 # Roadmap de Desenvolvimento — Discord AI Bot (Antigravity)
 
-**Versão Atual:** 3.6.0  
+**Versão Atual:** 3.7.0  
 **Data:** 07 de Novembro de 2026  
 **Status do Roadmap:** Em Evolução Contínua  
 
@@ -23,12 +23,13 @@ timeline
         v2.6 (Leitura & Book RAG) : Ingestão Leve : Sumários e Capítulos : Resumos com Cache : RAG de Livros com Citação de Páginas
         v2.7 (Roteamento Híbrido & Cloud) : Google Gemini API : Troca Dinâmica por Chat : Auto-Tiering por Complexidade : Failover Automático
         v2.8 (Pesquisa Web & Browsing) : DuckDuckGo Search em Tempo Real : Extração Limpa de Artigos : Comandos !buscar e !ler : Tools para IA
-        v3.0 (Anti-Spam & UI Interativa) : Gateway Unificado Outbox [IDEA-24] : Buttons, Menus & Modals [IDEA-08]
+        v3.0 (Anti-Spam & UI Interativa) : Gateway Unificado Outbox [IDEA-24-Legado] : Buttons, Menus & Modals [IDEA-08]
         v3.5 (Conhecimento Isolado & Especialistas) : Prompt Hub & Presets [IDEA-20] : Knowledge Hub & RAG por Canal [IDEA-25] : Personas & Overrides [IDEA-26]
         v3.6 (Governança Multiagente) : Roster 14 Agentes : Agent Manager /gerente : Ordens de Serviço : Auditorias Formais
+        v3.7 (Deep Research & AGY Runner) : Deep Research Autônomo [IDEA-17] : AGY Remote Runner Read-Only [IDEA-23] : Help Dinâmico & 6 Módulos
     section Planejado
-        v4.0 (Execução & Sandbox) : Sandbox Python (Análise de Dados e Gráficos) : YouTube RAG : Conectores
-        v5.0 (Visão & Voz ao Vivo) : Vision LLM (OCR e Imagens) : Voice Channel
+        v4.0 (Execução & Sandbox) : Git Worktree Sandbox [IDEA-24] : Sandbox Python (Análise de Dados) [IDEA-04] : YouTube RAG [IDEA-12] : Finanças Pessoais [IDEA-09]
+        v5.0 (Visão & Voz ao Vivo) : Vision LLM (OCR e Imagens) [IDEA-05] : Voice Channel [IDEA-18] : Modo Podcast [IDEA-10]
 ```
 
 ---
@@ -141,33 +142,51 @@ timeline
 - **Controle Versionado do Ciclo de Vida dos Agentes (`gerencial/`):** Pastas de controle para histórico de evolução (`agentes/`), backlog de novos especialistas (`novos_agentes/`), auditorias (`auditorias/`), revisões técnicas (`reviews/`), teses (`teses/`) e transcrições completas de ideação (`brainstorms/`).
 - **Repositório Canônico de Convergência de Ideias (`alquimista_ideias/`):** Persistência compulsória em JSON estrito das ideias sintetizadas pelo Alquimista (`ouro/`, `solidas/`, `medianas/`, `autopsias/`).
 
+### ✅ Versão 3.7.0 — Pesquisa Profunda (Deep Research), AGY Remote Runner & Help Dinâmico (Novembro/2026)
+- **Agente Autônomo de Pesquisa Profunda (`deep_research_manager.py`) [IDEA-17]:**
+  - Motor analítico que decompõe temas complexos em subconsultas, varre a web em paralelo com controle de concorrência (`asyncio.Semaphore(3)`), raspa e cruza de 8 a 15 fontes e sintetiza Dossiês Técnicos formais em Markdown anexados ao chat.
+  - Comandos dedicados: `!pesquisa_profunda <tema>` (aliases: `!pesquisa`, `!deepresearch`) e `!pesquisas` (histórico de relatórios).
+  - Tools para LLM: `executar_pesquisa_profunda` e `listar_relatorios_pesquisa`.
+  - Transição oficial: movida para `discord/SPECs/SPECS_IDEIAS_IMPLEMENTADAS/17_AGENTE_DE_PESQUISA_PROFUNDA_DEEP_RESEARCH.md`.
+- **Antigravity Remote Runner em Modo Read-Only (`agy_manager.py`) [IDEA-23]:**
+  - Descoberta e inspeção dinâmica de todas as 14 skills locais registradas em `.agents/skills/`.
+  - Telemetria de runtime em tempo real (Uptime, Consumo de RAM alocada via `getrusage`, contagem de tarefas assíncronas do loop e contagem de skills).
+  - Consultas consultivas isoladas na persona de qualquer especialista sem permissão de escrita em disco.
+  - Comandos dedicados: `!agy [skills|status|info|consultar]`.
+  - Tools para LLM: `listar_skills_antigravity` e `consultar_skill_antigravity`.
+  - Transição oficial: movida para `discord/SPECs/SPECS_IDEIAS_IMPLEMENTADAS/23_EXECUCAO_LOCAL_DE_AGENTES_E_SKILLS_VIA_AGY.md`.
+- **Modularização de Comandos & Help Dinâmico (`registry.py`, `system_commands.py`) [OS-008]:**
+  - Desmembramento de `builtins.py` em 6 módulos temáticos (`calendar`, `productivity`, `ai`, `knowledge`, `web`, `system`).
+  - Anotação `@register_command` com metadados obrigatórios de `category` e `example`.
+  - Menu `!ajuda` auto-gerado dinamicamente a partir das categorias do `CommandRegistry`, com ficha detalhada de comando via `!ajuda <comando>`.
+
 ---
 
 ## 3. Próximos Marcos (Roadmap Futuro)
 
-### 🚀 Versão 4.0.0 — Autonomia de Código, Planilhas, Vídeo & Finanças
-* **Objetivo:** Permitir cálculos matemáticos, gráficos, análise de dados de planilhas, inteligência de vídeos do YouTube e controle financeiro.
-1. **Ambiente Isolado de Execução de Código (Code Sandbox) [IDEA-04]:**
+### 🚀 Versão 4.0.0 — Autonomia de Código, Git Worktree Sandbox, Planilhas & Finanças
+* **Objetivo:** Permitir cálculos matemáticos, execução em sandbox isolado, análise de dados de planilhas e controle financeiro.
+1. **Execução e Edição de Código via Git Worktree Sandbox [IDEA-24]:**
+   - Criação automática de ambientes efêmeros em pasta isolada (`git worktree add ../antigravity-sandbox -b task/agy-xxx`), execução de testes automáticos antes de merge e card interativo no Discord com botões `[Aprovar & Merge]` / `[Descartar]`.
+2. **Ambiente Isolado de Execução de Código (Code Sandbox) [IDEA-04]:**
    - Execução controlada de scripts Python para análise de dados, cálculos matemáticos complexos e geração de gráficos (`matplotlib`) entregues como imagem no Discord.
-2. **Inteligência e RAG de Vídeos do YouTube [IDEA-12]:**
+3. **Gestão Financeira Pessoal & Controle de Gastos por Chat [IDEA-09]:**
+   - Registro instantâneo de gastos e receitas por texto ou áudio (*"Gastei 45 no almoço"*), categorização automática por IA, parsing de faturas de cartão (PDF/OFX/CSV) via `@data_engineer` e card financeiro no Resumo Matinal.
+4. **Inteligência e RAG de Vídeos do YouTube [IDEA-12]:**
    - Download de transcrições completas via `youtube-transcript-api` em segundos, geração de sumários executivos com índice de minutagem clicável (`[12:35]`) e conversação RAG com o vídeo.
-3. **Analista de Dados Pessoal (CSV/Excel & SQL Dinâmico) [IDEA-22]:**
+5. **Analista de Dados Pessoal (CSV/Excel & SQL Dinâmico) [IDEA-22]:**
    - Ingestão de planilhas e arquivos `.csv` com geração de gráficos estatísticos, estatísticas descritivas e consultas em linguagem natural.
-4. **Gestão Financeira Pessoal & Controle de Gastos por Chat [IDEA-09]:**
-   - Registro instantâneo de gastos e receitas por texto ou áudio (*"Gastei 45 no almoço"*), categorização automática por IA, controle de tetos de orçamento e card financeiro no Resumo Matinal.
-5. **Monitor de Preços & Alertas de Promoção (Price Tracker) [IDEA-16]:**
+6. **Monitor de Preços & Alertas de Promoção (Price Tracker) [IDEA-16]:**
    - Monitoramento de páginas de e-commerce a cada 4 horas com notificação prioritária no Discord quando o preço atingir a meta desejada.
 
-### 🚀 Versão 4.5.0 — Conectores Corporativos, Webhooks, Inbox Zero & Automação Local Antigravity
-* **Objetivo:** Conectar o bot ao ecossistema de produtividade, desenvolvimento e comunicação do usuário, incluindo controle remoto do hardware local.
+### 🚀 Versão 4.5.0 — Conectores Corporativos, Webhooks & Inbox Zero
+* **Objetivo:** Conectar o bot ao ecossistema de produtividade, desenvolvimento e comunicação do usuário.
 1. **Integração com Notion & Obsidian [IDEA-03]:**
    - Sincronização automática das listas de compras e tarefas com bancos de dados do Notion ou notas Markdown em cofres locais do Obsidian.
 2. **Hub de Webhooks & Automações Externas [IDEA-11]:**
    - Servidor HTTP interno assíncrono para receber webhooks do GitHub (alertas de PRs e CI/CD), plataformas de pagamento, ferramentas de monitoramento de servidores e atalhos do iOS/Mac.
 3. **Gestão Inteligente de E-mails & Inbox Zero (Gmail / IMAP) [IDEA-19]:**
    - Classificação de e-mails prioritários, filtro de newsletters, alertas de mensagens urgentes e redação de minutas de resposta direto no Discord.
-4. **Execução Local Segura de Agentes e Skills via AGY CLI (Antigravity Remote Runner) [IDEA-23]:**
-   - Disparo remoto e seguro de subagentes e skills do ecossistema local do Antigravity (`agy skill run`) a partir do Discord, com whitelist estrita, autorização por ID de usuário e confirmação interativa.
 
 ### 🚀 Versão 5.0.0 — Áudio Conversacional Imersivo & Voice Channel
 * **Objetivo:** Expandir a experiência de áudio para debates multi-voz e participação em chamadas ao vivo.
@@ -176,12 +195,10 @@ timeline
 2. **Assistente de Voz em Tempo Real no Canal de Áudio (Voice Channel) [IDEA-18]:**
    - O bot entra em canais de voz do Discord (`discord.VoiceChannel`), escuta a fala dos participantes em streaming e responde ao vivo com detecção VAD e suporte a interrupções (*barge-in*).
 
-### 🚀 Versão 5.5.0 — Grafos de Conhecimento, Deep Research & Agentes
-* **Objetivo:** Elevar o nível de raciocínio, memória de longo prazo e pesquisa profunda da IA.
+### 🚀 Versão 5.5.0 — Grafos de Conhecimento & Raciocínio Multi-Hop
+* **Objetivo:** Elevar o nível de raciocínio e memória de longo prazo da IA.
 1. **Grafo de Conhecimento Pessoal & Graph RAG [IDEA-13]:**
    - Construção de rede de nós e relacionamentos para responder a perguntas relacionais complexas (*multi-hop reasoning*) cruzando livros, conversas e projetos.
-2. **Agente Autônomo de Pesquisa Profunda (Deep Research) [IDEA-17]:**
-   - Investigação iterativa e multi-fonte na web com redação de dossiês técnicos completos com citações bibliográficas e tabelas comparativas.
 
 ### 🚀 Versão 5.5.0 — Hábitos, Aprendizado Ativo & Recuperação Segura
 * **Objetivo:** Reforçar a consistência diária, memorização de longo prazo e blindagem de dados.
