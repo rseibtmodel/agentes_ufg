@@ -225,8 +225,12 @@ class LLMClient:
         model: Optional[str] = None,
         permitir_failover: bool = True,
         incluir_badge: bool = False,
+        temperature: Optional[float] = None,
     ) -> str:
         """Gera resposta da LLM orquestrando o roteamento (Local vs Google Gemini vs Auto)."""
+        if temperature is not None:
+            temperatura = float(temperature)
+
         prov_alvo = (provider or DEFAULT_LLM_PROVIDER).lower()
         modelo_alvo = model
 

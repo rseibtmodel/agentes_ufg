@@ -182,7 +182,7 @@ class AGYManager:
                 ],
                 provider=provider,
                 model=model,
-                temperature=0.3,
+                temperatura=0.3,
                 permitir_failover=True,
             )
 

@@ -81,12 +81,17 @@ async def cmd_ler(ctx: CommandContext) -> None:
         await ctx.reply("⚠️ URL inválida. O link deve começar com `http://` ou `https://`.")
         return
 
-    msg_status = await ctx.reply(f"⏳ *Acessando e extraindo conteúdo legível de:* `<{url}>`...")
+    res_status = await ctx.reply(f"⏳ *Acessando e extraindo conteúdo legível de:* `<{url}>`...")
+    msg_status = res_status[0] if isinstance(res_status, list) and res_status else res_status
     async with ctx.channel.typing():
         try:
             res = await web_search_manager.ler_pagina_web(url=url, max_caracteres=3500)
             if not res.get("sucesso"):
-                await msg_status.edit(content=f"⚠️ {res.get('erro', 'Não foi possível ler esta página.')}")
+                texto_erro = f"⚠️ {res.get('erro', 'Não foi possível ler esta página.')}"
+                if msg_status and hasattr(msg_status, "edit"):
+                    await msg_status.edit(content=texto_erro)
+                else:
+                    await ctx.reply(texto_erro)
                 return
 
             titulo = res.get("titulo", "Página Web")
@@ -119,9 +124,16 @@ async def cmd_ler(ctx: CommandContext) -> None:
             if len(resposta_final) > 2000:
                 resposta_final = resposta_final[:1990] + "..."
 
-            await msg_status.edit(content=resposta_final)
+            if msg_status and hasattr(msg_status, "edit"):
+                await msg_status.edit(content=resposta_final)
+            else:
+                await ctx.reply(resposta_final)
         except Exception as e:
-            await msg_status.edit(content=f"⚠️ Falha durante a leitura da página: {str(e)}")
+            texto_falha = f"⚠️ Falha durante a leitura da página: {str(e)}"
+            if msg_status and hasattr(msg_status, "edit"):
+                await msg_status.edit(content=texto_falha)
+            else:
+                await ctx.reply(texto_falha)
 
 
 @register_command(
@@ -156,12 +168,13 @@ async def cmd_pesquisa_profunda(ctx: CommandContext) -> None:
         return
 
     tema = " ".join(ctx.args).strip()
-    msg_status = await ctx.reply(f"🧭 **Iniciando Deep Research:** *\"{tema}\"*\n*Aguarde, este processo realiza varredura e cruzamento de múltiplas fontes...*")
+    res_status = await ctx.reply(f"🧭 **Iniciando Deep Research:** *\"{tema}\"*\n*Aguarde, este processo realiza varredura e cruzamento de múltiplas fontes...*")
+    msg_status = res_status[0] if isinstance(res_status, list) and res_status else res_status
 
     # Callback para atualização em tempo real no Discord
     async def atualizar_progresso(status_texto: str) -> None:
         try:
-            if hasattr(msg_status, "edit"):
+            if msg_status and hasattr(msg_status, "edit"):
                 await msg_status.edit(content=f"{status_texto}\n\n📌 **Tema:** *\"{tema}\"*")
         except Exception:
             pass
@@ -176,7 +189,10 @@ async def cmd_pesquisa_profunda(ctx: CommandContext) -> None:
 
             if not resultado.get("sucesso"):
                 msg_erro = resultado.get("erro", "Falha na elaboração da pesquisa.")
-                await msg_status.edit(content=f"⚠️ {msg_erro}")
+                if msg_status and hasattr(msg_status, "edit"):
+                    await msg_status.edit(content=f"⚠️ {msg_erro}")
+                else:
+                    await ctx.reply(f"⚠️ {msg_erro}")
                 return
 
             dados = resultado["dados"]
@@ -198,7 +214,11 @@ async def cmd_pesquisa_profunda(ctx: CommandContext) -> None:
                 await ctx.reply(corpo_resposta)
 
         except Exception as e:
-            await msg_status.edit(content=f"⚠️ Falha inesperada durante o Deep Research: {str(e)}")
+            texto_excecao = f"⚠️ Falha inesperada durante o Deep Research: {str(e)}"
+            if msg_status and hasattr(msg_status, "edit"):
+                await msg_status.edit(content=texto_excecao)
+            else:
+                await ctx.reply(texto_excecao)
 
 
 @register_command(

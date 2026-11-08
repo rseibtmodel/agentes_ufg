@@ -92,7 +92,7 @@ class DeepResearchManager:
                 mensagens=[{"role": "user", "content": prompt}],
                 provider=provider,
                 model=model,
-                temperature=0.2,
+                temperatura=0.2,
                 permitir_failover=True,
             )
             match = re.search(r"\[.*\]", resposta, re.DOTALL)
@@ -209,7 +209,7 @@ class DeepResearchManager:
             mensagens=[{"role": "user", "content": prompt_dossie}],
             provider=provider,
             model=model,
-            temperature=0.3,
+            temperatura=0.3,
             permitir_failover=True,
         )
 

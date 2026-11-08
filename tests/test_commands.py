@@ -159,6 +159,38 @@ class TestCommandRegistry(unittest.IsolatedAsyncioTestCase):
             self.assertIn("Pesquisa & Web", args[0])
             self.assertIn("Exemplo de uso", args[0])
 
+    async def test_cmd_pesquisa_profunda_unpack_list_reply(self):
+        """Valida que cmd_pesquisa_profunda desempacota List[Message] de ctx.reply sem estourar AttributeError."""
+        from commands.web_commands import cmd_pesquisa_profunda
+
+        mock_msg = MagicMock()
+        mock_msg.author.id = 12345
+        mock_msg.channel.id = 999
+        mock_msg.channel.typing = MagicMock()
+        mock_msg.channel.typing.return_value.__aenter__ = AsyncMock()
+        mock_msg.channel.typing.return_value.__aexit__ = AsyncMock()
+
+        mock_client = MagicMock()
+
+        ctx = CommandContext(
+            message=mock_msg,
+            client=mock_client,
+            command_name="pesquisa_profunda",
+            args=["Model", "Context", "Protocol"],
+            arg_str="Model Context Protocol",
+        )
+
+        mock_status_msg = MagicMock()
+        mock_status_msg.edit = AsyncMock()
+
+        # Simula ctx.reply retornando List[Message]
+        with unittest.mock.patch.object(ctx, "reply", new_callable=AsyncMock, return_value=[mock_status_msg]):
+            with unittest.mock.patch("deep_research_manager.deep_research_manager.executar_pesquisa_completa", new_callable=AsyncMock) as mock_exec:
+                # Simula retorno de erro de negócio para testar msg_status.edit
+                mock_exec.return_value = {"sucesso": False, "erro": "Simulação de teste"}
+                await cmd_pesquisa_profunda(ctx)
+                mock_status_msg.edit.assert_called_with(content="⚠️ Simulação de teste")
+
 
 if __name__ == "__main__":
     unittest.main()
