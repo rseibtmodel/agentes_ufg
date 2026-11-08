@@ -48,6 +48,8 @@ logger = logging.getLogger(__name__)
     name="pdfs",
     description="Lista todos os arquivos PDF salvos na sua pasta pessoal com status de catálogo e RAG.",
     usage=f"{COMMAND_PREFIX}pdfs",
+    category="PDFs & Documentos",
+    example=f"{COMMAND_PREFIX}pdfs",
     aliases=["listar_pdfs", "meus_pdfs"],
 )
 async def cmd_pdfs(ctx: CommandContext) -> None:
@@ -79,6 +81,8 @@ async def cmd_pdfs(ctx: CommandContext) -> None:
     name="enviar",
     description="Envia de volta um arquivo PDF da sua pasta como anexo.",
     usage=f"{COMMAND_PREFIX}enviar <nome_do_arquivo>",
+    category="PDFs & Documentos",
+    example=f"{COMMAND_PREFIX}enviar relatorio",
     aliases=["baixar", "disponibilizar", "obter", "download"],
 )
 async def cmd_enviar(ctx: CommandContext) -> None:
@@ -112,6 +116,8 @@ async def cmd_enviar(ctx: CommandContext) -> None:
     name="pdf",
     description="Navegação, metadados, sumários, resumos de capítulos e RAG vetorial de livros e PDFs.",
     usage=f"{COMMAND_PREFIX}pdf [status|info|sumario|capitulo|indexar|perguntar] [arquivo] [argumentos...]",
+    category="PDFs & Documentos",
+    example=f"{COMMAND_PREFIX}pdf info relatorio",
     aliases=["livro", "livros", "ebook", "documento"],
 )
 async def cmd_pdf(ctx: CommandContext) -> None:
@@ -278,6 +284,8 @@ async def cmd_pdf(ctx: CommandContext) -> None:
     name="memoria",
     description="Realiza uma busca semântica na sua memória vetorial de longo prazo (ChromaDB).",
     usage=f"{COMMAND_PREFIX}memoria <termo_ou_pergunta>",
+    category="Memória de Longo Prazo",
+    example=f"{COMMAND_PREFIX}memoria Python",
     aliases=["lembrar", "busca_vetorial", "rag"],
 )
 async def cmd_memoria(ctx: CommandContext) -> None:
@@ -313,6 +321,8 @@ async def cmd_memoria(ctx: CommandContext) -> None:
     name="limpar_memoria",
     description="Limpa a sua memória vetorial no ChromaDB ({user}_memory).",
     usage=f"{COMMAND_PREFIX}limpar_memoria",
+    category="Memória de Longo Prazo",
+    example=f"{COMMAND_PREFIX}limpar_memoria",
     aliases=["reset_memoria", "clear_memory"],
 )
 async def cmd_limpar_memoria(ctx: CommandContext) -> None:
@@ -328,6 +338,8 @@ async def cmd_limpar_memoria(ctx: CommandContext) -> None:
     name="topico",
     description="Vincula, inspeciona e gerencia o tópico temático do canal atual (IDEA-25).",
     usage=f"{COMMAND_PREFIX}topico [vincular|status|desvincular|modo_livre]",
+    category="Knowledge Hub & Notas",
+    example=f"{COMMAND_PREFIX}topico status",
     aliases=["tema", "hub"],
 )
 async def cmd_topico(ctx: CommandContext) -> None:
@@ -405,6 +417,8 @@ async def cmd_topico(ctx: CommandContext) -> None:
     name="nota",
     description="Adiciona, busca, inspeciona ou remove notas no tópico temático do canal (IDEA-25).",
     usage=f"{COMMAND_PREFIX}nota [add|buscar|ver|remover|limpar] [conteúdo...]",
+    category="Knowledge Hub & Notas",
+    example=f"{COMMAND_PREFIX}nota add Regra de apuração CBS #cbs",
     aliases=["notas_cmd", "anotacao", "ideia"],
 )
 async def cmd_nota(ctx: CommandContext) -> None:
@@ -497,6 +511,8 @@ async def cmd_nota(ctx: CommandContext) -> None:
     name="notas",
     description="Lista as notas salvas no tópico do canal atual com filtro por tag opcional (IDEA-25).",
     usage=f"{COMMAND_PREFIX}notas [#tag] [limite]",
+    category="Knowledge Hub & Notas",
+    example=f"{COMMAND_PREFIX}notas #cbs",
     aliases=["listanotas", "minhasnotas"],
 )
 async def cmd_notas(ctx: CommandContext) -> None:

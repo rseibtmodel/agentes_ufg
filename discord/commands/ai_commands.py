@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
     name="modelo",
     description="Exibe e gerencia o modelo e provedor de LLM ativo (Local vs Google Gemini vs Auto).",
     usage=f"{COMMAND_PREFIX}modelo [local | google | gemini-pro | auto | key <chave>]",
+    category="IA & Modelos",
+    example=f"{COMMAND_PREFIX}modelo google",
     aliases=["llm", "ia", "provedor"],
 )
 async def cmd_modelo(ctx: CommandContext) -> None:
@@ -159,6 +161,8 @@ async def cmd_modelo(ctx: CommandContext) -> None:
     name="prompts",
     description="Lista os templates de prompts e presets cognitivos disponíveis no catálogo central (IDEA-20).",
     usage=f"{COMMAND_PREFIX}prompts [categoria]",
+    category="Central de Prompts",
+    example=f"{COMMAND_PREFIX}prompts",
     aliases=["templates", "presets"],
 )
 async def cmd_prompts(ctx: CommandContext) -> None:
@@ -186,6 +190,8 @@ async def cmd_prompts(ctx: CommandContext) -> None:
     name="prompt",
     description="Exibe, salva ou remove templates de prompt na Central de Prompts (IDEA-20).",
     usage=f"{COMMAND_PREFIX}prompt [ver|salvar|remover] <slug> [texto...]",
+    category="Central de Prompts",
+    example=f"{COMMAND_PREFIX}prompt ver dev",
     aliases=["template"],
 )
 async def cmd_prompt(ctx: CommandContext) -> None:
@@ -254,6 +260,8 @@ async def cmd_prompt(ctx: CommandContext) -> None:
     name="persona",
     description="Visualiza, cadastra novas personas no catálogo e calibra personas específicas por canal/thread (IDEA-26).",
     usage=f"{COMMAND_PREFIX}persona [lista|salvar <id> <prompt>|remover <id>|canais|canal <aplicar|ver|temp|modelo|reset>]",
+    category="Personas & Especialistas",
+    example=f"{COMMAND_PREFIX}persona lista",
     aliases=["personas", "personacanal"],
 )
 async def cmd_persona(ctx: CommandContext) -> None:

@@ -13,6 +13,8 @@ from config import COMMAND_PREFIX
     name="buscar",
     description="Pesquisa informações atualizadas na internet em tempo real (notícias, cotações, fatos).",
     usage=f"{COMMAND_PREFIX}buscar <termo de pesquisa>",
+    category="Pesquisa & Web",
+    example=f"{COMMAND_PREFIX}buscar cotação do dólar hoje",
     aliases=["pesquisar", "busca", "search", "web"],
 )
 async def cmd_buscar(ctx: CommandContext) -> None:
@@ -53,6 +55,8 @@ async def cmd_buscar(ctx: CommandContext) -> None:
     name="ler",
     description="Acessa uma página web ou artigo, extrai o texto limpo e gera uma síntese inteligente.",
     usage=f"{COMMAND_PREFIX}ler <url>",
+    category="Pesquisa & Web",
+    example=f"{COMMAND_PREFIX}ler https://exemplo.com/artigo",
     aliases=["ler_artigo", "ler_pagina", "browse", "extrair", "resumir_link"],
 )
 async def cmd_ler(ctx: CommandContext) -> None:
@@ -124,6 +128,8 @@ async def cmd_ler(ctx: CommandContext) -> None:
     name="pesquisa_profunda",
     description="Executa uma investigação profunda na web (Deep Research), cruzando múltiplas fontes e gerando um dossiê executivo com citações.",
     usage=f"{COMMAND_PREFIX}pesquisa_profunda <tema ou pergunta complexa>",
+    category="Pesquisa & Web",
+    example=f"{COMMAND_PREFIX}pesquisa Reforma tributária CBS no SaaS",
     aliases=["pesquisa", "deepresearch", "investigar", "dossie"],
 )
 async def cmd_pesquisa_profunda(ctx: CommandContext) -> None:
@@ -199,6 +205,8 @@ async def cmd_pesquisa_profunda(ctx: CommandContext) -> None:
     name="pesquisas",
     description="Lista seus relatórios e dossiês de pesquisa profunda já concluídos.",
     usage=f"{COMMAND_PREFIX}pesquisas",
+    category="Pesquisa & Web",
+    example=f"{COMMAND_PREFIX}pesquisas",
     aliases=["meus_dossies", "relatorios_pesquisa"],
 )
 async def cmd_pesquisas(ctx: CommandContext) -> None:

@@ -41,3 +41,4 @@ flowchart TD
 2. **Proteção de Segredos:** O arquivo `.env` com tokens reais nunca é comitado nem exposto no diff enviado ao Discord.
 3. **Invariante de Testes:** Se a suíte de testes quebrar dentro do sandbox, o botão de merge é bloqueado e o erro é reportado.
 4. **Decisão Humana Soberana:** Nenhum código do sandbox é mesclado na branch `main` sem o clique confirmatório do Arquiteto-Chefe.
+

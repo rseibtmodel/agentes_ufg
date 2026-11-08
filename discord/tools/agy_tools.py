@@ -75,3 +75,4 @@ async def tool_consultar_skill_antigravity(nome_skill: str, consulta: str) -> Di
         consulta=consulta,
         user_id=user_id,
     )
+

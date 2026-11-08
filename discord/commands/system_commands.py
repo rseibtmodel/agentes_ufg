@@ -16,7 +16,7 @@ Fornece comandos centrais de operação:
 import logging
 from typing import Optional
 
-from commands.registry import CommandContext, register_command
+from commands.registry import CommandContext, register_command, registry as commands_registry
 from config import COMMAND_PREFIX, MODELO_LLM
 from database import (
     contar_mensagens,
@@ -76,14 +76,32 @@ async def cmd_ajuda(ctx: CommandContext) -> None:
             "   Bases de conhecimento por canal, RAG 100% isolado, hashtags e auto-captura.\n",
             f"🎭 **Personas por Canal:** `{COMMAND_PREFIX}ajuda persona`",
             "   Especialistas por canal/thread com System Prompts, temperatura e modelos dedicados.\n",
+            f"🧠 **Agentes & Skills (AGY):** `{COMMAND_PREFIX}ajuda agy`",
+            "   Inspeção e consultas às 14 skills locais e telemetria do Antigravity Runner.\n",
             "─" * 40,
-            f"📖 **Como usar:** Digite `{COMMAND_PREFIX}ajuda <modulo>` (ex: `{COMMAND_PREFIX}ajuda agenda` ou `{COMMAND_PREFIX}ajuda lista`)",
+            f"📖 **Como usar:** Digite `{COMMAND_PREFIX}ajuda <modulo>` (ex: `{COMMAND_PREFIX}ajuda agenda` ou `{COMMAND_PREFIX}ajuda web`)",
+            f"💡 **Ficha de Comando:** Digite `{COMMAND_PREFIX}ajuda <comando>` (ex: `{COMMAND_PREFIX}ajuda pesquisa_profunda` ou `{COMMAND_PREFIX}ajuda agy`) para ver o manual completo de qualquer comando!",
             "💡 *Dica:* Durante a conversa normal sem prefixo, a IA executa todas as ações de forma autônoma!",
         ]
         await ctx.reply("\n".join(linhas))
         return
 
-    modulo = ctx.args[0].lower().strip()
+    modulo = ctx.args[0].lower().strip().lstrip(COMMAND_PREFIX)
+
+    # 1. Verificação de Ajuda Direta por Comando Específico
+    cmd_especifico = commands_registry.get_command(modulo)
+    if cmd_especifico:
+        aliases_str = ", ".join([f"`{COMMAND_PREFIX}{a}`" for a in cmd_especifico.aliases]) if cmd_especifico.aliases else "Nenhum"
+        exemplo_str = f"\n• **Exemplo de uso:** `{cmd_especifico.example}`" if cmd_especifico.example else ""
+        linhas_cmd = [
+            f"📌 **MANUAL DO COMANDO: `{COMMAND_PREFIX}{cmd_especifico.name}`**",
+            f"• **Categoria:** `{cmd_especifico.category}`",
+            f"• **Descrição:** {cmd_especifico.description}",
+            f"• **Sintaxe:** `{cmd_especifico.usage}`{exemplo_str}",
+            f"• **Apelidos (Aliases):** {aliases_str}",
+        ]
+        await ctx.reply("\n".join(linhas_cmd))
+        return
 
     # Módulo: Geral & Diagnóstico
     if modulo in ("geral", "diagnostico", "bot", "sistema", "status", "utilidades"):
@@ -291,16 +309,21 @@ async def cmd_ajuda(ctx: CommandContext) -> None:
         return
 
     # Módulo: Pesquisa na Web & Browsing
-    if modulo in ("web", "buscar", "busca", "pesquisa", "internet", "google", "noticias", "noticia", "browsing", "ler", "navegador"):
+    if modulo in ("web", "buscar", "busca", "pesquisa", "internet", "noticias", "noticia", "browsing", "ler", "navegador", "deepresearch"):
         linhas = [
-            "🌐 **AJUDA: MÓDULO PESQUISA NA WEB & BROWSING**",
-            "Acesso a fatos atualizados, cotações, clima e leitura limpa de páginas em tempo real:\n",
+            "🌐 **AJUDA: MÓDULO PESQUISA NA WEB, BROWSING & DEEP RESEARCH**",
+            "Acesso a fatos atualizados, cotações, leitura de páginas e investigações profundas:\n",
             f"• `{COMMAND_PREFIX}buscar <pergunta ou termo>` (ou `{COMMAND_PREFIX}pesquisar`)",
             "  Pesquisa notícias, cotações financeiras, documentações e previsões na web.",
-            "  *Exemplo:* `!buscar cotação do dólar hoje` ou `!buscar previsão do tempo são paulo`",
+            "  *Exemplo:* `!buscar cotação do dólar hoje` ou `!buscar previsão do tempo são paulo`\n",
             f"• `{COMMAND_PREFIX}ler <url>` (ou `{COMMAND_PREFIX}artigo`)",
             "  Acessa uma página web, extrai o texto limpo e a IA sintetiza um resumo estruturado.",
             "  *Exemplo:* `!ler https://exemplo.com/materia-de-tecnologia`\n",
+            f"• `{COMMAND_PREFIX}pesquisa_profunda <tema>` (ou `{COMMAND_PREFIX}pesquisa`, `{COMMAND_PREFIX}deepresearch`)",
+            "  Conduz uma investigação profunda multi-fontes na web, cruzando dados e gerando um dossiê executivo com anexo Markdown.",
+            "  *Exemplo:* `!pesquisa_profunda Reforma Tributária CBS no setor de tecnologia`\n",
+            f"• `{COMMAND_PREFIX}pesquisas`",
+            "  Lista seus relatórios e dossiês de pesquisa profunda já gerados anteriormente.\n",
             "💡 *Dica Conversacional:* Durante a conversa normal sem prefixo, a IA aciona a busca na internet automaticamente sempre que você perguntar sobre fatos recentes, cotações ou notícias!",
         ]
         await ctx.reply("\n".join(linhas))
@@ -400,25 +423,54 @@ async def cmd_ajuda(ctx: CommandContext) -> None:
         await ctx.reply("\n".join(linhas))
         return
 
-    # Módulo desconhecido
+    # Módulo: Agentes & Skills Locais (AGY Runner — IDEA-23)
+    if modulo in ("agy", "agente", "agentes", "skill", "skills", "skills_locais", "runner"):
+        linhas = [
+            "🧠 **AJUDA: MÓDULO AGENTES & SKILLS LOCAIS (AGY REMOTE RUNNER)**",
+            "Inspeção e consultas às skills e especialistas locais do Antigravity em modo Read-Only:\n",
+            f"• `{COMMAND_PREFIX}agy skills` (ou `{COMMAND_PREFIX}agentes`)",
+            "  Lista todas as 14 skills locais registradas em `.agents/skills/` com nome e descrição.",
+            "  *Exemplo:* `!agy skills`\n",
+            f"• `{COMMAND_PREFIX}agy info <skill>`",
+            "  Exibe o manifesto detalhado, regras e escopo da skill.",
+            "  *Exemplo:* `!agy info critic` ou `!agy info architect`\n",
+            f"• `{COMMAND_PREFIX}agy status`",
+            "  Exibe a telemetria do runtime local (uptime, RAM alocada, CPU, tarefas ativas).",
+            "  *Exemplo:* `!agy status`\n",
+            f"• `{COMMAND_PREFIX}agy consultar <skill> <sua dúvida>`",
+            "  Consulta a persona de um especialista para emitir um laudo técnico (somente leitura).",
+            "  *Exemplo:* `!agy consultar critic Qual o risco de concorrência no SQLite WAL?`\n",
+            "💡 *Dica:* A IA também possui as tools `listar_skills_antigravity` e `consultar_skill_antigravity` para consultas via linguagem natural!",
+        ]
+        await ctx.reply("\n".join(linhas))
+        return
+
+    # 2. Resolução Dinâmica por Categoria do CommandRegistry
+    cmds_categoria = commands_registry.get_commands_by_category(modulo)
+    if cmds_categoria:
+        nome_categoria = cmds_categoria[0].category
+        linhas_cat = [
+            f"📂 **AJUDA: CATEGORIA `{nome_categoria.upper()}`**",
+            f"*(Comandos registrados sob esta categoria no CommandRegistry)*\n",
+        ]
+        for cmd in cmds_categoria:
+            ex_txt = f"\n  └ 💡 Exemplo: `{cmd.example}`" if cmd.example else ""
+            linhas_cat.append(f"• **`{cmd.usage}`**\n  └ {cmd.description}{ex_txt}")
+        linhas_cat.append(f"\n💡 *Para detalhes de um comando específico, use: `{COMMAND_PREFIX}ajuda <nome_comando>`*")
+        await ctx.reply("\n".join(linhas_cat))
+        return
+
+    # Módulo desconhecido — lista todas as categorias dinamicamente
+    categorias_registradas = commands_registry.get_categories()
     linhas = [
-        f"❓ **Módulo de ajuda '{modulo}' não reconhecido.**\n",
-        "Os blocos temáticos disponíveis são:",
-        f"• `{COMMAND_PREFIX}ajuda geral` — Diagnóstico e controle da sessão",
-        f"• `{COMMAND_PREFIX}ajuda modelo` — Roteador de modelos (Local vs Google Gemini)",
-        f"• `{COMMAND_PREFIX}ajuda web` — Pesquisa na internet e leitura de artigos",
-        f"• `{COMMAND_PREFIX}ajuda prompts` — Central de Prompts, templates e presets",
-        f"• `{COMMAND_PREFIX}ajuda notas` — Knowledge Hub temático e RAG isolado",
-        f"• `{COMMAND_PREFIX}ajuda persona` — Personas, temperatura e modelo por canal",
-        f"• `{COMMAND_PREFIX}ajuda agenda` — Google Calendar (consultar e agendar)",
-        f"• `{COMMAND_PREFIX}ajuda lista` — Listas de mercado, compras e tarefas",
-        f"• `{COMMAND_PREFIX}ajuda lembrete` — Avisos e notificações temporizadas",
-        f"• `{COMMAND_PREFIX}ajuda pdf` — Gerenciamento e download de PDFs",
-        f"• `{COMMAND_PREFIX}ajuda memoria` — Memória semântica no ChromaDB",
-        f"• `{COMMAND_PREFIX}ajuda voz` — Modo de resposta (texto, áudio ou ambos)",
-        f"• `{COMMAND_PREFIX}ajuda digest` — Resumo matinal diário proativo\n",
-        f"💡 Digite `{COMMAND_PREFIX}ajuda` para ver o resumo completo.",
+        f"❓ **Módulo ou comando '{modulo}' não reconhecido.**\n",
+        "**Categorias disponíveis no bot:**",
     ]
+    for cat in categorias_registradas:
+        slug_sugerido = cat.lower().split("&")[0].split()[0]
+        linhas.append(f"• **{cat}:** `{COMMAND_PREFIX}ajuda {slug_sugerido}`")
+
+    linhas.append(f"\n💡 *Você também pode digitar `{COMMAND_PREFIX}ajuda <comando>` para ver o manual de qualquer comando específico.*")
     await ctx.reply("\n".join(linhas))
 
 
@@ -683,6 +735,8 @@ async def cmd_gateway(ctx: CommandContext) -> None:
     name="agy",
     description="Controlador do Antigravity Remote Runner (Leitura, Telemetria & Consulta de Agentes — IDEA-23).",
     usage=f"{COMMAND_PREFIX}agy [skills|info|status|consultar] [argumentos]",
+    category="Agentes & Skills (AGY)",
+    example=f"{COMMAND_PREFIX}agy skills",
     aliases=["agentes", "skills_locais"],
 )
 async def cmd_agy(ctx: CommandContext) -> None:

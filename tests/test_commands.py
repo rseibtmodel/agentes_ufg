@@ -12,7 +12,7 @@ DISCORD_PATH = Path(__file__).resolve().parent.parent / "discord"
 if str(DISCORD_PATH) not in sys.path:
     sys.path.insert(0, str(DISCORD_PATH))
 
-from commands.registry import CommandRegistry, register_command
+from commands.registry import CommandContext, CommandRegistry, register_command
 from message_gateway import message_gateway
 import commands.builtins  # Carrega todos os 6 submódulos modularizados
 
@@ -106,6 +106,58 @@ class TestCommandRegistry(unittest.IsolatedAsyncioTestCase):
 
         executado = await test_registry.dispatch(mock_message, mock_client)
         self.assertFalse(executado)
+
+    async def test_commands_categories_and_dynamic_help(self):
+        """Valida que comandos possuem categorias registradas e o !ajuda dinâmico responde corretamente."""
+        from commands.registry import registry
+        from commands.system_commands import cmd_ajuda
+
+        # 1. Verifica categorias cadastradas
+        categorias = registry.get_categories()
+        self.assertIn("Google Calendar", categorias)
+        self.assertIn("Pesquisa & Web", categorias)
+        self.assertIn("Agentes & Skills (AGY)", categorias)
+
+        # 2. Verifica comandos sob a categoria Pesquisa & Web
+        cmds_web = registry.get_commands_by_category("Pesquisa & Web")
+        nomes_web = [c.name for c in cmds_web]
+        self.assertIn("pesquisa_profunda", nomes_web)
+        self.assertIn("buscar", nomes_web)
+
+        mock_msg = MagicMock()
+        mock_msg.author.id = 999
+        mock_client = MagicMock()
+
+        # 3. Teste !ajuda (menu geral)
+        ctx_geral = CommandContext(
+            message=mock_msg,
+            client=mock_client,
+            command_name="ajuda",
+            args=[],
+            arg_str="",
+        )
+        with unittest.mock.patch.object(ctx_geral, "reply", new_callable=AsyncMock) as mock_reply:
+            await cmd_ajuda(ctx_geral)
+            mock_reply.assert_called_once()
+            args, _ = mock_reply.call_args
+            self.assertIn("CENTRAL DE AJUDA", args[0])
+            self.assertIn("Agentes & Skills (AGY)", args[0])
+
+        # 4. Teste !ajuda pesquisa_profunda (ficha específica de comando)
+        ctx_cmd = CommandContext(
+            message=mock_msg,
+            client=mock_client,
+            command_name="ajuda",
+            args=["pesquisa_profunda"],
+            arg_str="pesquisa_profunda",
+        )
+        with unittest.mock.patch.object(ctx_cmd, "reply", new_callable=AsyncMock) as mock_reply:
+            await cmd_ajuda(ctx_cmd)
+            mock_reply.assert_called_once()
+            args, _ = mock_reply.call_args
+            self.assertIn("MANUAL DO COMANDO: `!pesquisa_profunda`", args[0])
+            self.assertIn("Pesquisa & Web", args[0])
+            self.assertIn("Exemplo de uso", args[0])
 
 
 if __name__ == "__main__":

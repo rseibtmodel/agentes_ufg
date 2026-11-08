@@ -208,3 +208,4 @@ class AGYManager:
 
 # Instância global padrão do AGYManager
 agy_manager = AGYManager()
+

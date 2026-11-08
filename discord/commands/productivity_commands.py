@@ -30,6 +30,8 @@ from ui_components import InteractiveListView
     name="lista",
     description="Gerencia listas pessoais (mercado, tarefas, compras). Subcomandos: ver, add, ticar, remover, limpar, excluir.",
     usage=f"{COMMAND_PREFIX}lista <ver|add|ticar|remover|limpar|excluir> [nome] [item]",
+    category="Listas & Tarefas",
+    example=f"{COMMAND_PREFIX}lista ver mercado",
     aliases=["list", "mercado", "tarefas"],
 )
 async def cmd_lista(ctx: CommandContext) -> None:
@@ -145,6 +147,8 @@ async def cmd_lista(ctx: CommandContext) -> None:
     name="listas",
     description="Exibe todas as listas de compras, mercado ou tarefas cadastradas pelo usuário.",
     usage=f"{COMMAND_PREFIX}listas",
+    category="Listas & Tarefas",
+    example=f"{COMMAND_PREFIX}listas",
     aliases=["minhas_listas"],
 )
 async def cmd_listas(ctx: CommandContext) -> None:
@@ -171,6 +175,8 @@ async def cmd_listas(ctx: CommandContext) -> None:
     name="lembrete",
     description="Agenda um aviso ou lembrete para você. Aceita tempo relativo ('em 15m') ou data e hora ('19/10/2026 09:00').",
     usage=f"{COMMAND_PREFIX}lembrete <quando> <mensagem>",
+    category="Lembretes Agendados",
+    example=f"{COMMAND_PREFIX}lembrete em 15m tomar café",
     aliases=["lembrar", "aviso", "avisar"],
 )
 async def cmd_lembrete(ctx: CommandContext) -> None:
@@ -225,6 +231,8 @@ async def cmd_lembrete(ctx: CommandContext) -> None:
     name="lembretes",
     description="Lista todos os seus lembretes pendentes agendados.",
     usage=f"{COMMAND_PREFIX}lembretes",
+    category="Lembretes Agendados",
+    example=f"{COMMAND_PREFIX}lembretes",
     aliases=["meus_lembretes", "avisos"],
 )
 async def cmd_lembretes(ctx: CommandContext) -> None:
@@ -246,6 +254,8 @@ async def cmd_lembretes(ctx: CommandContext) -> None:
     name="cancelar_lembrete",
     description="Cancela um lembrete pendente através do ID.",
     usage=f"{COMMAND_PREFIX}cancelar_lembrete <ID>",
+    category="Lembretes Agendados",
+    example=f"{COMMAND_PREFIX}cancelar_lembrete 3",
     aliases=["remover_lembrete", "desmarcar_lembrete"],
 )
 async def cmd_cancelar_lembrete(ctx: CommandContext) -> None:

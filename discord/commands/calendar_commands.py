@@ -15,6 +15,8 @@ from google_calendar import adicionar_compromisso, listar_compromissos, remover_
     name="agenda",
     description="Consulta seus próximos compromissos no Google Calendar.",
     usage=f"{COMMAND_PREFIX}agenda [dias]",
+    category="Google Calendar",
+    example=f"{COMMAND_PREFIX}agenda 7",
     aliases=["calendario", "compromissos", "eventos"],
 )
 async def cmd_agenda(ctx: CommandContext) -> None:
@@ -47,6 +49,8 @@ async def cmd_agenda(ctx: CommandContext) -> None:
     name="agendar",
     description="Adiciona um novo compromisso no Google Calendar.",
     usage=f"{COMMAND_PREFIX}agendar <Título> | <Data/Hora Início> [| <Data/Hora Fim>]",
+    category="Google Calendar",
+    example=f"{COMMAND_PREFIX}agendar Reunião | 2026-11-10 14:00",
     aliases=["marcar", "novo_evento"],
 )
 async def cmd_agendar(ctx: CommandContext) -> None:
@@ -81,6 +85,8 @@ async def cmd_agendar(ctx: CommandContext) -> None:
     name="desmarcar",
     description="Remove ou cancela um compromisso da agenda do Google Calendar.",
     usage=f"{COMMAND_PREFIX}desmarcar <Nome do Evento ou ID>",
+    category="Google Calendar",
+    example=f"{COMMAND_PREFIX}desmarcar Dentista",
     aliases=["cancelar_evento", "remover_evento"],
 )
 async def cmd_desmarcar(ctx: CommandContext) -> None:

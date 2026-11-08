@@ -95,6 +95,8 @@ class CommandDefinition:
     func: Callable
     description: str
     usage: str
+    category: str = "Geral & Diagnóstico"
+    example: Optional[str] = None
     aliases: List[str] = field(default_factory=list)
     is_async: bool = True
 
@@ -112,14 +114,18 @@ class CommandRegistry:
         name: Optional[str] = None,
         description: Optional[str] = None,
         usage: Optional[str] = None,
+        category: Optional[str] = None,
+        example: Optional[str] = None,
         aliases: Optional[List[str]] = None,
     ):
-        """Decorador para registrar um novo comando.
+        """Decorador para registrar um novo comando com metadados para o Help dinâmico.
         
         Exemplo:
             @register_command(
                 name="ping",
                 description="Verifica a latência do bot",
+                category="Geral & Diagnóstico",
+                example="!ping",
                 aliases=["latencia"]
             )
             async def cmd_ping(ctx: CommandContext):
@@ -129,6 +135,7 @@ class CommandRegistry:
             cmd_name = (name or func.__name__).replace("cmd_", "").lower()
             cmd_desc = description or (func.__doc__ or "").strip() or "Sem descrição fornecida."
             cmd_usage = usage or f"{self.prefix}{cmd_name}"
+            cmd_category = category or "Geral & Diagnóstico"
             cmd_aliases = [a.lower() for a in (aliases or [])]
             is_async = inspect.iscoroutinefunction(func)
 
@@ -137,6 +144,8 @@ class CommandRegistry:
                 func=func,
                 description=cmd_desc,
                 usage=cmd_usage,
+                category=cmd_category,
+                example=example,
                 aliases=cmd_aliases,
                 is_async=is_async,
             )
@@ -145,10 +154,23 @@ class CommandRegistry:
             for alias in cmd_aliases:
                 self._aliases[alias] = cmd_name
 
-            logger.info("Comando registrado: %s%s (aliases=%s)", self.prefix, cmd_name, cmd_aliases)
+            logger.info("Comando registrado: %s%s (cat=%s, aliases=%s)", self.prefix, cmd_name, cmd_category, cmd_aliases)
             return func
 
         return decorator
+
+    def get_categories(self) -> List[str]:
+        """Retorna lista ordenada de todas as categorias únicas registradas."""
+        cats = {cmd.category for cmd in self._commands.values() if cmd.category}
+        return sorted(list(cats))
+
+    def get_commands_by_category(self, category: str) -> List[CommandDefinition]:
+        """Retorna todos os comandos que pertencem à categoria informada (busca flexível)."""
+        cat_termo = category.lower().strip()
+        return [
+            cmd for cmd in sorted(self._commands.values(), key=lambda c: c.name)
+            if cat_termo in cmd.category.lower()
+        ]
 
     def get_command(self, name: str) -> Optional[CommandDefinition]:
         """Busca a definição do comando por nome ou apelido (alias)."""
