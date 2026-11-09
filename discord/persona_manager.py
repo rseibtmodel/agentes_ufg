@@ -41,13 +41,16 @@ def _ensure_persona_slug_column(conn: sqlite3.Connection) -> None:
             "bio": "TEXT",
             "is_adaptive": "INTEGER DEFAULT 1",
             "is_locked": "INTEGER DEFAULT 0",
-            "last_evolved_at": "DATETIME DEFAULT CURRENT_TIMESTAMP",
+            "last_evolved_at": "DATETIME DEFAULT NULL",
             "evolution_history_json": "TEXT DEFAULT '[]'",
         }
         for col, col_type in colunas_necessarias.items():
             if col not in cols:
-                cursor.execute(f"ALTER TABLE channel_personas ADD COLUMN {col} {col_type};")
-        conn.commit()
+                try:
+                    cursor.execute(f"ALTER TABLE channel_personas ADD COLUMN {col} {col_type};")
+                    conn.commit()
+                except Exception as ex_col:
+                    logger.debug("Falha ao adicionar coluna %s: %s", col, ex_col)
     except Exception as ex:
         logger.debug("Verificação de colunas multimodais: %s", ex)
 
