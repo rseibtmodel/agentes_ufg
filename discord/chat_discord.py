@@ -25,6 +25,7 @@ from database import init_db
 from message_handler import processar_mensagem
 from reminder_manager import iniciar_worker_lembretes
 from digest_manager import iniciar_worker_digest
+from persona_evolution_manager import iniciar_worker_metamorfose
 from audio_manager import get_whisper_model
 from tools import inicializar_cache_ferramentas
 from tools.registry import registry as tools_registry
@@ -119,6 +120,9 @@ async def on_ready():
 
     # Inicia o worker em segundo plano para envio automático diário do resumo matinal
     asyncio.create_task(iniciar_worker_digest(client))
+
+    # Inicia o worker em segundo plano para metamorfose semanal adaptativa de personas (IDEA-27)
+    asyncio.create_task(iniciar_worker_metamorfose(client))
 
     # Pré-aquece o cache de embeddings das ferramentas para acelerar o Tool Filtering
     asyncio.create_task(inicializar_cache_ferramentas())

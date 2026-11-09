@@ -262,10 +262,10 @@ async def cmd_prompt(ctx: CommandContext) -> None:
 
 @register_command(
     name="persona",
-    description="Visualiza, calibra a identidade multimodal (avatar, nome, idade) e gerencia personas por canal (IDEA-26 e IDEA-27).",
-    usage=f"{COMMAND_PREFIX}persona [ver|editar|avatar <url>|identidade <nome>|<idade>|<bio>|fixar|destravar|lista|salvar|remover|canais|canal]",
+    description="Visualiza, calibra a identidade multimodal (avatar, nome, idade) e gerencia personas por canal e metamorfose semanal (IDEA-26 e IDEA-27).",
+    usage=f"{COMMAND_PREFIX}persona [ver|editar|avatar <url>|identidade|fixar|destravar|metamorfose|historico|lista|canal]",
     category="Personas & Especialistas",
-    example=f"{COMMAND_PREFIX}persona ver",
+    example=f"{COMMAND_PREFIX}persona metamorfose",
     aliases=["personas", "personacanal"],
 )
 async def cmd_persona(ctx: CommandContext) -> None:
@@ -349,6 +349,8 @@ async def cmd_persona(ctx: CommandContext) -> None:
             f"• `{COMMAND_PREFIX}persona editar` — Abre formulário interativo de identidade",
             f"• `{COMMAND_PREFIX}persona avatar <url>` — Altera imagem de perfil do canal",
             f"• `{COMMAND_PREFIX}persona identidade <nome> | <idade> | <bio>` — Define perfil",
+            f"• `{COMMAND_PREFIX}persona metamorfose` — Força metamorfose semanal com Bag-of-Words",
+            f"• `{COMMAND_PREFIX}persona historico` — Exibe álbum de encarnações passadas",
             f"• `{COMMAND_PREFIX}persona fixar` / `{COMMAND_PREFIX}persona destravar` — Controla evolução de 7 dias",
             f"• `{COMMAND_PREFIX}persona canal reset` — Restaura assistente padrão",
         ])
@@ -435,6 +437,69 @@ async def cmd_persona(ctx: CommandContext) -> None:
     if sub in ("destravar", "descongelar", "unlock", "adaptativo"):
         res = definir_trava_persona_canal(channel_id=channel_id, is_locked=False)
         await ctx.reply(res["mensagem"])
+        return
+
+    # Subcomando: metamorfose / evoluir (Força evolução adaptativa imediata baseada nas conversas)
+    if sub in ("metamorfose", "evoluir", "metamorphosis", "adaptar", "mutar"):
+        from persona_evolution_manager import persona_evolution_manager
+        from ui_components import criar_view_metamorfose
+
+        res_msg = await ctx.reply("🌀 *Extraindo frequência semântica e sintetizando nova metamorfose semanal...*")
+        msg_obj = res_msg[0] if isinstance(res_msg, list) and res_msg else res_msg
+
+        res_evol = await persona_evolution_manager.executar_metamorfose_canal(
+            channel_id=channel_id,
+            forcar=True,
+            client=ctx.client,
+        )
+
+        if not res_evol.get("sucesso"):
+            erro_txt = f"⚠️ Falha ao executar metamorfose: {res_evol.get('erro', 'Erro desconhecido.')}"
+            if msg_obj and hasattr(msg_obj, "edit"):
+                await msg_obj.edit(content=erro_txt)
+            else:
+                await ctx.reply(erro_txt)
+            return
+
+        embed_anuncio = res_evol["embed"]
+        view_acoes = criar_view_metamorfose(channel_id=channel_id)
+        if msg_obj and hasattr(msg_obj, "edit"):
+            await msg_obj.edit(content=None, embed=embed_anuncio, view=view_acoes)
+        else:
+            await ctx.reply(embed=embed_anuncio, view=view_acoes)
+        return
+
+    # Subcomando: historico / album (Exibe encarnações passadas da persona do canal)
+    if sub in ("historico", "album", "encarnacoes", "passadas"):
+        from persona_evolution_manager import persona_evolution_manager
+        historico = await persona_evolution_manager.obter_historico_metamorfoses(channel_id=channel_id)
+
+        if not historico:
+            await ctx.reply(
+                "📜 **Álbum de Metamorfoses Vazio:**\n"
+                "Este canal ainda não possui encarnações anteriores registradas.\n"
+                f"Para disparar uma metamorfose de teste agora, use: `{COMMAND_PREFIX}persona metamorfose`."
+            )
+            return
+
+        emb_hist = discord.Embed(
+            title=f"🏛️ Álbum Histórico de Personas: #{channel_name}",
+            description="Registro genealógico das encarnações passadas geradas pelas conversas do canal:",
+            color=0x3498DB,
+        )
+        for idx, enc in enumerate(historico, start=1):
+            nome_enc = enc.get("display_name") or "Antigravity"
+            idade_enc = enc.get("age") or "Idade não registrada"
+            bio_enc = enc.get("bio") or "Sem biografia"
+            data_enc = enc.get("evolved_at", "")[:10]
+            termos = ", ".join(f"`{t}`" for t in enc.get("top_terms", [])) or "Nenhum"
+            emb_hist.add_field(
+                name=f"{idx}. {nome_enc} ({idade_enc}) — {data_enc}",
+                value=f"• *{bio_enc}*\n• **Termos frequentes:** {termos}",
+                inline=False,
+            )
+        emb_hist.set_footer(text=f"Total de {len(historico)} encarnações arquivadas.")
+        await ctx.reply(embed=emb_hist)
         return
 
     # 1. Visualizar personas disponíveis no catálogo com dropdown interativo

@@ -686,3 +686,61 @@ def criar_view_modal_persona(channel_id: str | int) -> Optional[PersonaModalLaun
     except Exception as e:
         logger.warning("Falha ao instanciar PersonaModalLauncherView: %s", e)
         return None
+
+
+# ==============================================================================
+# VIEW DE AÇÕES DE METAMORFOSE SEMANAL (FIXAR, RE-ROLAR, CUSTOMIZAR)
+# ==============================================================================
+
+class MetamorphosisActionView(discord.ui.View):
+    """View interativa para ações imediatas pós-metamorfose semanal (IDEA-27)."""
+
+    def __init__(self, channel_id: str | int):
+        super().__init__(timeout=DISCORD_UI_TIMEOUT_SECONDS)
+        self.channel_id = str(channel_id)
+
+    @discord.ui.button(label="Fixar Persona", style=discord.ButtonStyle.secondary, emoji="🔒", row=0)
+    async def btn_fixar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        from persona_manager import definir_trava_persona_canal
+        definir_trava_persona_canal(self.channel_id, is_locked=True)
+        button.disabled = True
+        button.label = "Fixada"
+        await interaction.response.edit_message(view=self)
+        await interaction.followup.send(
+            "🔒 **Persona Fixada!** Esta identidade foi preservada e não sofrerá mais mutações semanais.",
+            ephemeral=True,
+        )
+
+    @discord.ui.button(label="Re-rolar", style=discord.ButtonStyle.primary, emoji="🎲", row=0)
+    async def btn_rerolar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        from persona_evolution_manager import persona_evolution_manager
+        res = await persona_evolution_manager.executar_metamorfose_canal(
+            channel_id=self.channel_id,
+            forcar=True,
+            client=interaction.client,
+        )
+        if res.get("sucesso"):
+            nova_view = MetamorphosisActionView(channel_id=self.channel_id)
+            await interaction.followup.send(embed=res["embed"], view=nova_view)
+        else:
+            await interaction.followup.send(f"⚠️ Falha ao re-rolar metamorfose: {res.get('erro')}", ephemeral=True)
+
+    @discord.ui.button(label="Customizar", style=discord.ButtonStyle.secondary, emoji="⚙️", row=0)
+    async def btn_customizar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        from persona_manager import obter_persona_canal
+        p = obter_persona_canal(self.channel_id)
+        modal = PersonaEditModal(self.channel_id, persona_atual=p)
+        await interaction.response.send_modal(modal)
+
+
+def criar_view_metamorfose(channel_id: str | int) -> Optional[MetamorphosisActionView]:
+    """Retorna MetamorphosisActionView para o canal."""
+    if not DISCORD_UI_COMPONENTS_ENABLED:
+        return None
+    try:
+        return MetamorphosisActionView(channel_id=channel_id)
+    except Exception as e:
+        logger.warning("Falha ao instanciar MetamorphosisActionView: %s", e)
+        return None
+
