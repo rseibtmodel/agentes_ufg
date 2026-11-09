@@ -191,6 +191,44 @@ class TestCommandRegistry(unittest.IsolatedAsyncioTestCase):
                 await cmd_pesquisa_profunda(ctx)
                 mock_status_msg.edit.assert_called_with(content="⚠️ Simulação de teste")
 
+    async def test_context_reply_and_send_with_embed(self):
+        """Valida que CommandContext.reply e send aceitam embed=... sem TypeError."""
+        import discord
+        mock_msg = MagicMock()
+        mock_msg.channel.id = 888
+        mock_msg.author.id = 333
+        mock_client = MagicMock()
+
+        ctx = CommandContext(
+            message=mock_msg,
+            client=mock_client,
+            command_name="teste_embed",
+            args=[],
+            arg_str="",
+        )
+
+        dummy_embed = discord.Embed(title="Teste Embed", description="Corpo do Embed")
+        with unittest.mock.patch("message_gateway.message_gateway.dispatch", new_callable=AsyncMock) as mock_dispatch:
+            mock_dispatch.return_value = MagicMock()
+            
+            # Testa reply com embed
+            res_reply = await ctx.reply(embed=dummy_embed)
+            self.assertEqual(len(res_reply), 1)
+            mock_dispatch.assert_called_with(
+                ctx.channel,
+                content=None,
+                embed=dummy_embed,
+                file=None,
+                files=None,
+                view=None,
+                priority=unittest.mock.ANY,
+                reference=ctx.message,
+            )
+
+            # Testa send com embed
+            res_send = await ctx.send(embed=dummy_embed)
+            self.assertEqual(len(res_send), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

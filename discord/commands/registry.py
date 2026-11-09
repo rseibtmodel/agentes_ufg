@@ -34,25 +34,53 @@ class CommandContext:
     def channel(self):
         return self.message.channel
 
-    async def reply(self, content: str, view: Optional[discord.ui.View] = None) -> List[discord.Message]:
+    async def reply(
+        self,
+        content: Optional[str] = None,
+        view: Optional[discord.ui.View] = None,
+        embed: Optional[discord.Embed] = None,
+        file: Optional[discord.File] = None,
+        files: Optional[List[discord.File]] = None,
+    ) -> List[discord.Message]:
         """Responde referenciando a mensagem original do usuário através do Message Gateway (Outbox).
         
         Divide automaticamente respostas longas (> 1900 caracteres) em múltiplos blocos.
-        Suporta componentes de interface interativos (discord.ui.View) anexados.
+        Suporta componentes de interface interativos (discord.ui.View), Embeds e Anexos.
         100% dos despachos são canalizados pelo message_gateway, preservando controle anti-spam
         e limites de taxa da API do Discord.
         """
         from message_gateway import message_gateway, MessagePriority
-        blocos = dividir_mensagem(content, limite=1900)
+
+        if embed is not None and not content:
+            msg = await message_gateway.dispatch(
+                self.channel,
+                content=None,
+                embed=embed,
+                file=file,
+                files=files,
+                view=view,
+                priority=MessagePriority.HIGH,
+                reference=self.message,
+            )
+            return [msg] if msg else []
+
+        texto = content or ""
+        blocos = dividir_mensagem(texto, limite=1900) if texto else [""]
         mensagens = []
         primeiro = True
         for bloco in blocos:
             v = view if primeiro else None
+            emb = embed if primeiro else None
+            f_single = file if primeiro else None
+            f_list = files if primeiro else None
             ref = self.message if primeiro else None
             try:
                 msg = await message_gateway.dispatch(
                     self.channel,
-                    content=bloco,
+                    content=bloco or None,
+                    embed=emb,
+                    file=f_single,
+                    files=f_list,
                     view=v,
                     priority=MessagePriority.HIGH,
                     reference=ref,
@@ -61,10 +89,13 @@ class CommandContext:
                 if msg:
                     mensagens.append(msg)
             except discord.Forbidden:
-                texto = f"{self.author.mention}\n{bloco}" if primeiro else bloco
+                texto_fallback = f"{self.author.mention}\n{bloco}" if (primeiro and bloco) else bloco
                 msg = await message_gateway.dispatch(
                     self.channel,
-                    content=texto,
+                    content=texto_fallback or None,
+                    embed=emb,
+                    file=f_single,
+                    files=f_list,
                     view=v,
                     priority=MessagePriority.HIGH,
                 )
@@ -73,15 +104,47 @@ class CommandContext:
                     mensagens.append(msg)
         return mensagens
 
-    async def send(self, content: str, view: Optional[discord.ui.View] = None) -> List[discord.Message]:
+    async def send(
+        self,
+        content: Optional[str] = None,
+        view: Optional[discord.ui.View] = None,
+        embed: Optional[discord.Embed] = None,
+        file: Optional[discord.File] = None,
+        files: Optional[List[discord.File]] = None,
+    ) -> List[discord.Message]:
         """Envia mensagens no canal dividindo em blocos se ultrapassar o limite."""
         from message_gateway import message_gateway, MessagePriority
-        blocos = dividir_mensagem(content, limite=1900)
+
+        if embed is not None and not content:
+            msg = await message_gateway.dispatch(
+                self.channel,
+                content=None,
+                embed=embed,
+                file=file,
+                files=files,
+                view=view,
+                priority=MessagePriority.HIGH,
+            )
+            return [msg] if msg else []
+
+        texto = content or ""
+        blocos = dividir_mensagem(texto, limite=1900) if texto else [""]
         mensagens = []
         primeiro = True
         for bloco in blocos:
             v = view if primeiro else None
-            msg = await message_gateway.dispatch(self.channel, content=bloco, view=v, priority=MessagePriority.HIGH)
+            emb = embed if primeiro else None
+            f_single = file if primeiro else None
+            f_list = files if primeiro else None
+            msg = await message_gateway.dispatch(
+                self.channel,
+                content=bloco or None,
+                embed=emb,
+                file=f_single,
+                files=f_list,
+                view=v,
+                priority=MessagePriority.HIGH,
+            )
             primeiro = False
             if msg:
                 mensagens.append(msg)
