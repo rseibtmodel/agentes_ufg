@@ -142,12 +142,28 @@ class MessageGateway:
         except Exception as e:
             logger.debug("Não foi possível persistir auditoria outbox: %s", e)
 
-    def _generate_hash(self, channel_id: str, content: Optional[str], file: Optional[discord.File], files: Optional[List[discord.File]]) -> str:
-        """Calcula hash SHA-256 do conteúdo da mensagem para deduplicação."""
+    def _generate_hash(
+        self,
+        channel_id: str,
+        content: Optional[str],
+        file: Optional[discord.File],
+        files: Optional[List[discord.File]],
+        embed: Optional[discord.Embed] = None,
+    ) -> str:
+        """Calcula hash SHA-256 do conteúdo da mensagem (incluindo texto e embeds) para deduplicação."""
         h = hashlib.sha256()
         h.update(str(channel_id).encode("utf-8"))
         if content:
             h.update(content.strip().encode("utf-8"))
+        if embed:
+            if embed.title:
+                h.update(str(embed.title).encode("utf-8"))
+            if embed.description:
+                h.update(str(embed.description).strip().encode("utf-8"))
+            if embed.fields:
+                for f in embed.fields:
+                    h.update(str(f.name or "").encode("utf-8"))
+                    h.update(str(f.value or "").encode("utf-8"))
         if file and hasattr(file, "filename"):
             h.update(file.filename.encode("utf-8"))
         if files:
@@ -296,7 +312,7 @@ class MessageGateway:
             )
 
         channel_id = str(getattr(target, "id", "global"))
-        c_hash = self._generate_hash(channel_id, content, file, files)
+        c_hash = self._generate_hash(channel_id, content, file, files, embed=embed)
         msg_id = str(uuid.uuid4())
 
         # 1. Guarda Anti-Spam: Deduplicação por SHA-256

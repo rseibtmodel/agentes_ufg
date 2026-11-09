@@ -95,6 +95,45 @@ class TestMessageGateway(unittest.IsolatedAsyncioTestCase):
         # Verifica se foi deletado após o envio
         self.assertFalse(temp_file.exists())
 
+    async def test_embed_chunking_distinct_hashes(self):
+        """Valida que múltiplos chunks enviados como Embed (content=None) não sofrem colisão de hash (OS-012)."""
+        import discord
+
+        mock_channel = MagicMock()
+        mock_channel.id = 555
+        mock_channel.send = AsyncMock(return_value=MagicMock())
+
+        embed_chunk_1 = discord.Embed(description="Parte 1: Início do raciocínio complexo sobre a apuração assistida.")
+        embed_chunk_2 = discord.Embed(description="Parte 2: Conclusão detalhada com análise dogmática do CTN.")
+
+        # Primeiro chunk
+        res_1 = await self.gateway.dispatch(target=mock_channel, embed=embed_chunk_1)
+        self.assertIsNotNone(res_1)
+
+        # Aguarda 0.22s para testar Fast-Path do segundo chunk
+        import asyncio
+        await asyncio.sleep(0.22)
+
+        # Segundo chunk imediato (diferente descrição no Embed)
+        res_2 = await self.gateway.dispatch(target=mock_channel, embed=embed_chunk_2)
+        self.assertIsNotNone(res_2)
+        self.assertEqual(mock_channel.send.call_count, 2)
+        self.assertEqual(self.gateway.get_status()["stats"]["duplicates_dropped"], 0)
+
+    def test_sanitizacao_badges_repetidos(self):
+        """Valida que a sanitização defensiva de badges remove 1, 2 ou múltiplos badges acumulados (OS-012)."""
+        from llm_client import sanitizar_badges_repetidos
+
+        texto_sujo = (
+            "⚡ `[Google Gemini: gemini-3.5-flash]`\n\n"
+            "⚡ `[Google Gemini: gemini-3.5-flash]`\n\n"
+            "⚡ `[Google Gemini: gemini-3.5-flash]`\n\n"
+            "Touché! Você foi na veia do debate tributário."
+        )
+        limpo = sanitizar_badges_repetidos(texto_sujo)
+        self.assertEqual(limpo, "Touché! Você foi na veia do debate tributário.")
+        self.assertNotIn("Google Gemini", limpo)
+
 
 if __name__ == "__main__":
     unittest.main()

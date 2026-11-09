@@ -71,6 +71,7 @@ async def _send_gateway(
     view: Optional[discord.ui.View] = None,
     reference: Optional[Any] = None,
     delete_after_send: Optional[Any] = None,
+    forcar_dedup: bool = False,
 ) -> Any:
     """Despacha mensagem pelo Barramento Centralizado (IDEA-24) com Fast-Path prioritário (<100ms)."""
     return await message_gateway.dispatch(
@@ -83,6 +84,7 @@ async def _send_gateway(
         priority=MessagePriority.HIGH,
         reference=reference,
         delete_after_send=delete_after_send,
+        forcar_dedup=forcar_dedup,
     )
 
 
@@ -120,10 +122,13 @@ async def _despachar_resposta_persona(
     persona: Optional[Dict[str, Any]] = None,
     view: Optional[discord.ui.View] = None,
     reference: Optional[Any] = None,
+    forcar_dedup: bool = False,
+    chunk_index: Optional[int] = None,
+    total_chunks: Optional[int] = None,
 ) -> Any:
     """Despacha mensagem com a identidade multimodal da persona (Webhook Masquerade ou Embed)."""
     if not persona or (not persona.get("display_name") and not persona.get("avatar_url") and not persona.get("avatar_seed")):
-        return await _send_gateway(channel, content=content, view=view, reference=reference)
+        return await _send_gateway(channel, content=content, view=view, reference=reference, forcar_dedup=forcar_dedup)
 
     from persona_manager import obter_avatar_persona
     nome_display = persona.get("display_name") or persona.get("persona_id") or "Assistente"
@@ -147,7 +152,13 @@ async def _despachar_resposta_persona(
     embed = discord.Embed(description=content, color=0x2B2D31)
     idade_txt = f" • {persona['age']}" if persona.get("age") else ""
     embed.set_author(name=f"{nome_display}{idade_txt}", icon_url=avatar_url)
-    return await _send_gateway(channel, embed=embed, view=view, reference=reference)
+
+    if total_chunks and total_chunks > 1 and chunk_index is not None:
+        idx_disp = chunk_index + 1
+        footer_status = "Continua abaixo..." if idx_disp < total_chunks else "Concluído"
+        embed.set_footer(text=f"📄 Parte {idx_disp}/{total_chunks} • {footer_status}")
+
+    return await _send_gateway(channel, embed=embed, view=view, reference=reference, forcar_dedup=forcar_dedup)
 
 
 def detectar_solicitacao_modelo(texto: str) -> Optional[str]:
@@ -520,9 +531,14 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
             ]
 
             # Adiciona o histórico conversacional recente (apenas papéis user e assistant)
+            from llm_client import sanitizar_badges_repetidos
             for h in historico:
                 if h.get("role") in ("user", "assistant") and h.get("content"):
-                    mensagens_para_llm.append({"role": h["role"], "content": h["content"]})
+                    conteudo_h = h["content"]
+                    if h.get("role") == "assistant":
+                        conteudo_h = sanitizar_badges_repetidos(conteudo_h)
+                    if conteudo_h and conteudo_h.strip():
+                        mensagens_para_llm.append({"role": h["role"], "content": conteudo_h})
 
             # Seleciona semanticamente apenas as ferramentas mais relevantes para a mensagem (Tool RAG)
             ferramentas_selecionadas = await filtrar_ferramentas_relevantes(conteudo_limpo)
@@ -561,7 +577,7 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
                 failover_ativo = True
 
             # Gera resposta da LLM de forma assíncrona (não-bloqueante) com roteamento híbrido
-            resposta_texto = await llm_client.gerar_resposta(
+            resposta_com_badge = await llm_client.gerar_resposta(
                 mensagens_para_llm,
                 tools=ferramentas_selecionadas,
                 temperatura=temperatura,
@@ -571,18 +587,22 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
                 incluir_badge=True,
             )
 
-            # Salva a resposta gerada no banco SQLite e no ChromaDB de forma não-bloqueante
-            if resposta_texto and resposta_texto.strip():
+            # Extrai versão estritamente limpa (sem badge de UI) para gravação no banco e na memória
+            from llm_client import sanitizar_badges_repetidos
+            resposta_texto_limpo = sanitizar_badges_repetidos(resposta_com_badge)
+
+            # Salva no banco SQLite e no ChromaDB estritamente o texto limpo
+            if resposta_texto_limpo and resposta_texto_limpo.strip():
                 if topico_canal:
-                    await asyncio.to_thread(salvar_mensagem, user_id, "assistant", resposta_texto, channel_id=channel_id)
+                    await asyncio.to_thread(salvar_mensagem, user_id, "assistant", resposta_texto_limpo, channel_id=channel_id)
                     if flag_global:
-                        await salvar_memoria_vetorial(user_name, "assistant", resposta_texto)
+                        await salvar_memoria_vetorial(user_name, "assistant", resposta_texto_limpo)
                 else:
-                    await asyncio.to_thread(salvar_mensagem, user_id, "assistant", resposta_texto)
-                    await salvar_memoria_vetorial(user_name, "assistant", resposta_texto)
+                    await asyncio.to_thread(salvar_mensagem, user_id, "assistant", resposta_texto_limpo)
+                    await salvar_memoria_vetorial(user_name, "assistant", resposta_texto_limpo)
 
             # Divide e prepara mensagens respeitando o limite do Discord
-            chunks = dividir_mensagem(resposta_texto)
+            chunks = dividir_mensagem(resposta_com_badge)
             if not chunks:
                 chunks = ["*O assistente não gerou conteúdo de texto.*"]
 
@@ -598,14 +618,22 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
 
             try:
                 if modo_resposta == "texto":
-                    # Opção 1: Apenas Texto (com identidade polimórfica da Persona)
+                    # Opção 1: Apenas Texto (com identidade polimórfica da Persona e anti-spam desativado em chunks)
                     for idx, chunk in enumerate(chunks):
                         v = view_to_attach if idx == len(chunks) - 1 else None
-                        await _despachar_resposta_persona(message.channel, content=chunk, persona=persona_canal, view=v)
+                        await _despachar_resposta_persona(
+                            message.channel,
+                            content=chunk,
+                            persona=persona_canal,
+                            view=v,
+                            forcar_dedup=(idx > 0),
+                            chunk_index=idx,
+                            total_chunks=len(chunks),
+                        )
 
                 elif modo_resposta == "audio":
-                    # Opção 2: Apenas Áudio (Francisca pt-BR via edge-tts)
-                    caminho_audio, erro_tts = await sintetizar_fala_edge(resposta_texto)
+                    # Opção 2: Apenas Áudio (Francisca pt-BR via edge-tts - lê texto limpo sem badge)
+                    caminho_audio, erro_tts = await sintetizar_fala_edge(resposta_texto_limpo)
                     if caminho_audio and caminho_audio.exists():
                         audio_delegado_gateway = True
                         await _send_gateway(
@@ -619,15 +647,31 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
                         logger.warning("Falha na síntese de áudio: %s. Enviando texto como fallback.", erro_tts)
                         for idx, chunk in enumerate(chunks):
                             v = view_to_attach if idx == len(chunks) - 1 else None
-                            await _despachar_resposta_persona(message.channel, content=chunk, persona=persona_canal, view=v)
+                            await _despachar_resposta_persona(
+                                message.channel,
+                                content=chunk,
+                                persona=persona_canal,
+                                view=v,
+                                forcar_dedup=(idx > 0),
+                                chunk_index=idx,
+                                total_chunks=len(chunks),
+                            )
 
                 elif modo_resposta == "ambos":
                     # Opção 3: Texto e Áudio Simultâneos
                     for idx, chunk in enumerate(chunks):
                         v = view_to_attach if idx == len(chunks) - 1 else None
-                        await _despachar_resposta_persona(message.channel, content=chunk, persona=persona_canal, view=v)
+                        await _despachar_resposta_persona(
+                            message.channel,
+                            content=chunk,
+                            persona=persona_canal,
+                            view=v,
+                            forcar_dedup=(idx > 0),
+                            chunk_index=idx,
+                            total_chunks=len(chunks),
+                        )
 
-                    caminho_audio, erro_tts = await sintetizar_fala_edge(resposta_texto)
+                    caminho_audio, erro_tts = await sintetizar_fala_edge(resposta_texto_limpo)
                     if caminho_audio and caminho_audio.exists():
                         audio_delegado_gateway = True
                         await _send_gateway(

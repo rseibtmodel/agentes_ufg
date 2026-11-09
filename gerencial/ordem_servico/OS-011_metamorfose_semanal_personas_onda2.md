@@ -41,3 +41,4 @@ Implementar a **Onda 2** da IDEA-27: desenvolver o extrator local em Python puro
 - Zero vazamentos de tokens: leitura 100% local com Python standard library (`Counter`, `re`).
 - Zero bloqueios no Event Loop: chamadas SQLite executadas com `asyncio.to_thread`.
 - Respeito soberano ao `is_locked`: personas fixadas pelo usuário jamais são sobrescritas.
+

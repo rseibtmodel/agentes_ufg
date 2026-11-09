@@ -8,6 +8,7 @@ de ferramentas (function calling / tools).
 
 import json
 import logging
+import re
 from typing import Any, Dict, List, Optional, Tuple
 from openai import AsyncOpenAI
 from config import (
@@ -28,6 +29,14 @@ from config import (
 from tools import execute_tool, get_tools_schema
 
 logger = logging.getLogger(__name__)
+
+
+def sanitizar_badges_repetidos(texto: str) -> str:
+    """Remove badges legados ou repetidos que possam ter sido imitados pela LLM."""
+    if not texto:
+        return ""
+    padrao = r"^(?:[\s\n]*[`⚡🏠🧠\s]*\[(?:Google Gemini|LM Studio)[^\]]+\][`\s]*)+"
+    return re.sub(padrao, "", texto, flags=re.MULTILINE).strip()
 
 
 def sanitizar_mensagens_jinja(mensagens: List[Any]) -> List[Any]:
@@ -275,7 +284,8 @@ class LLMClient:
                     "failover": False,
                     "badge": badge,
                 }
-                return f"{badge}\n\n{texto_res}" if incluir_badge else texto_res
+                texto_limpo = sanitizar_badges_repetidos(texto_res)
+                return f"{badge}\n\n{texto_limpo}" if incluir_badge else texto_limpo
 
             except Exception as e_gemini:
                 logger.error("Falha na chamada ao Google Gemini: %s. Tentando fallback local...", e_gemini)
@@ -304,7 +314,8 @@ class LLMClient:
                 "failover": False,
                 "badge": badge_local,
             }
-            return f"{badge_local}\n\n{texto_res}" if incluir_badge else texto_res
+            texto_limpo = sanitizar_badges_repetidos(texto_res)
+            return f"{badge_local}\n\n{texto_limpo}" if incluir_badge else texto_limpo
 
         except Exception as e_local:
             logger.warning("Falha na chamada ao LM Studio Local: %s", e_local)
@@ -331,7 +342,8 @@ class LLMClient:
                         "failover": True,
                         "badge": badge_failover,
                     }
-                    res_final = texto_res + nota_failover
+                    texto_limpo = sanitizar_badges_repetidos(texto_res)
+                    res_final = texto_limpo + nota_failover
                     return f"{badge_failover}\n\n{res_final}" if incluir_badge else res_final
                 except Exception as e_failover:
                     logger.error("Falha também no failover para Google Gemini: %s", e_failover)
