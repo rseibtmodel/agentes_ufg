@@ -552,3 +552,137 @@ def criar_view_selecao_persona(
     except Exception as e:
         logger.warning("Falha ao instanciar PersonaSelectView: %s", e)
         return None
+
+
+# ==============================================================================
+# MODAL DE IDENTIDADE MULTIMODAL DA PERSONA (IDEA-27)
+# ==============================================================================
+
+class PersonaEditModal(discord.ui.Modal):
+    """Modal nativo do Discord para edição da Identidade Multimodal da Persona."""
+
+    def __init__(self, channel_id: str | int, persona_atual: Optional[Dict[str, Any]] = None):
+        super().__init__(title="🎭 Identidade da Persona do Canal")
+        self.channel_id = str(channel_id).strip()
+        p = persona_atual or {}
+
+        self.nome_input = discord.ui.TextInput(
+            label="Nome de Exibição do Personagem",
+            placeholder="Ex: Dra. Neusa, Cadu Hacker, Prof. Silas...",
+            default=p.get("display_name") or "",
+            required=False,
+            max_length=32,
+            style=discord.TextStyle.short,
+        )
+        self.add_item(self.nome_input)
+
+        self.idade_input = discord.ui.TextInput(
+            label="Idade ou Maturação",
+            placeholder="Ex: 28 anos, 64 anos, Ancestral...",
+            default=p.get("age") or "",
+            required=False,
+            max_length=30,
+            style=discord.TextStyle.short,
+        )
+        self.add_item(self.idade_input)
+
+        self.avatar_input = discord.ui.TextInput(
+            label="URL da Imagem do Avatar (Opcional)",
+            placeholder="Ex: https://i.imgur.com/... ou link direto de imagem",
+            default=p.get("avatar_url") or "",
+            required=False,
+            max_length=255,
+            style=discord.TextStyle.short,
+        )
+        self.add_item(self.avatar_input)
+
+        self.seed_input = discord.ui.TextInput(
+            label="Semente DiceBear (se não usar URL)",
+            placeholder="Ex: cyberpunk-cat, neon-bot, scholar...",
+            default=p.get("avatar_seed") or "",
+            required=False,
+            max_length=50,
+            style=discord.TextStyle.short,
+        )
+        self.add_item(self.seed_input)
+
+        self.bio_input = discord.ui.TextInput(
+            label="Biografia / Contexto de Fundo",
+            placeholder="Ex: Perita contábil cética, focada em números exatos e métricas...",
+            default=p.get("bio") or "",
+            required=False,
+            max_length=300,
+            style=discord.TextStyle.paragraph,
+        )
+        self.add_item(self.bio_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        from persona_manager import definir_identidade_canal, definir_avatar_canal, obter_persona_canal, obter_avatar_persona
+
+        nome = self.nome_input.value.strip() or None
+        idade = self.idade_input.value.strip() or None
+        url = self.avatar_input.value.strip() or None
+        seed = self.seed_input.value.strip() or None
+        bio = self.bio_input.value.strip() or None
+
+        definir_identidade_canal(
+            channel_id=self.channel_id,
+            display_name=nome,
+            age=idade,
+            bio=bio,
+        )
+        definir_avatar_canal(
+            channel_id=self.channel_id,
+            avatar_url=url,
+            avatar_seed=seed,
+        )
+
+        persona_atualizada = obter_persona_canal(self.channel_id)
+        avatar_final = obter_avatar_persona(persona_atualizada)
+
+        embed = discord.Embed(
+            title="🎭 Identidade Multimodal Atualizada!",
+            description=(
+                f"• **Nome de Exibição:** `{nome or 'Padrão'}`\n"
+                f"• **Idade / Maturação:** `{idade or 'Não especificada'}`\n"
+                f"• **Bio:** *{bio or 'Sem bio'}*\n"
+                f"• **Avatar Ativo:** [Visualizar Imagem]({avatar_final})\n"
+                f"• **Status:** 🔒 *Perfil travado contra mutações automáticas.*"
+            ),
+            color=0x2B2D31,
+        )
+        embed.set_thumbnail(url=avatar_final)
+        await interaction.response.send_message(embed=embed)
+
+
+class OpenPersonaModalButton(discord.ui.Button):
+    """Botão para abrir o PersonaEditModal via Interaction."""
+
+    def __init__(self, channel_id: str | int):
+        super().__init__(label="✏️ Abrir Editor de Persona", style=discord.ButtonStyle.primary, emoji="🎭")
+        self.channel_id = str(channel_id)
+
+    async def callback(self, interaction: discord.Interaction):
+        from persona_manager import obter_persona_canal
+        p = obter_persona_canal(self.channel_id)
+        modal = PersonaEditModal(self.channel_id, persona_atual=p)
+        await interaction.response.send_modal(modal)
+
+
+class PersonaModalLauncherView(discord.ui.View):
+    """View contendo botão para disparar o Modal de Persona."""
+
+    def __init__(self, channel_id: str | int):
+        super().__init__(timeout=180.0)
+        self.add_item(OpenPersonaModalButton(channel_id))
+
+
+def criar_view_modal_persona(channel_id: str | int) -> Optional[PersonaModalLauncherView]:
+    """Retorna PersonaModalLauncherView para o canal."""
+    if not DISCORD_UI_COMPONENTS_ENABLED:
+        return None
+    try:
+        return PersonaModalLauncherView(channel_id=channel_id)
+    except Exception as e:
+        logger.warning("Falha ao instanciar PersonaModalLauncherView: %s", e)
+        return None

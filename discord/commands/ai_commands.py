@@ -18,18 +18,22 @@ from database import definir_preferencia_modelo, obter_preferencia_modelo
 from llm_client import llm_client
 from persona_manager import (
     aplicar_preset_canal,
+    definir_avatar_canal,
+    definir_identidade_canal,
     definir_modelo_canal,
     definir_persona_canal,
     definir_temperatura_canal,
+    definir_trava_persona_canal,
     listar_personas_canais,
     listar_personas_disponiveis,
+    obter_avatar_persona,
     obter_persona_canal,
     remover_persona_catalogo,
     resetar_persona_canal,
     salvar_nova_persona,
 )
 from prompt_hub import listar_templates, obter_template, remover_template, salvar_template
-from ui_components import criar_view_selecao_persona
+from ui_components import criar_view_modal_persona, criar_view_selecao_persona
 
 logger = logging.getLogger(__name__)
 
@@ -258,10 +262,10 @@ async def cmd_prompt(ctx: CommandContext) -> None:
 
 @register_command(
     name="persona",
-    description="Visualiza, cadastra novas personas no catálogo e calibra personas específicas por canal/thread (IDEA-26).",
-    usage=f"{COMMAND_PREFIX}persona [lista|salvar <id> <prompt>|remover <id>|canais|canal <aplicar|ver|temp|modelo|reset>]",
+    description="Visualiza, calibra a identidade multimodal (avatar, nome, idade) e gerencia personas por canal (IDEA-26 e IDEA-27).",
+    usage=f"{COMMAND_PREFIX}persona [ver|editar|avatar <url>|identidade <nome>|<idade>|<bio>|fixar|destravar|lista|salvar|remover|canais|canal]",
     category="Personas & Especialistas",
-    example=f"{COMMAND_PREFIX}persona lista",
+    example=f"{COMMAND_PREFIX}persona ver",
     aliases=["personas", "personacanal"],
 )
 async def cmd_persona(ctx: CommandContext) -> None:
@@ -281,12 +285,45 @@ async def cmd_persona(ctx: CommandContext) -> None:
             or str(ctx.author.id) == os.getenv("DISCORD_USER", "")
         )
 
+    # Função auxiliar para renderizar Card Embed da Persona (IDEA-27)
+    def _gerar_embed_status_persona(p: Optional[dict]) -> discord.Embed:
+        import discord
+        if not p:
+            emb = discord.Embed(
+                title=f"🎭 Persona do Canal: #{channel_name}",
+                description="ℹ️ Este canal está utilizando o **Assistente Padrão** do sistema.",
+                color=0x2B2D31,
+            )
+            emb.set_thumbnail(url="https://api.dicebear.com/7.x/bottts/png?seed=antigravity")
+            return emb
+
+        av = obter_avatar_persona(p)
+        emb = discord.Embed(
+            title=f"🎭 Persona do Canal: #{channel_name}",
+            color=0x2B2D31,
+        )
+        emb.set_thumbnail(url=av)
+        nome_display = p.get("display_name") or p.get("persona_slug") or p.get("persona_id") or "Personalizada"
+        emb.add_field(name="👤 Nome de Exibição", value=f"`{nome_display}`", inline=True)
+        emb.add_field(name="⏳ Idade / Maturação", value=f"`{p.get('age') or 'Não informada'}`", inline=True)
+        lock_txt = "🔒 Travada (Permanente)" if p.get("is_locked") else "🔓 Adaptativa (7 dias)"
+        emb.add_field(name="🔄 Evolução Semanal", value=f"`{lock_txt}`", inline=True)
+        if p.get("bio"):
+            emb.add_field(name="📜 Biografia / Contexto", value=f"*{p['bio']}*", inline=False)
+        mod_txt = f" | Modelo: `{p['model_override']}`" if p.get("model_override") else ""
+        emb.add_field(name="⚙️ Calibração", value=f"Temperatura: `{p.get('temperature', 0.7)}`{mod_txt}", inline=False)
+        prompt_preview = p.get("system_prompt", "")
+        if len(prompt_preview) > 500:
+            prompt_preview = prompt_preview[:490] + "..."
+        emb.add_field(name="📝 Diretrizes Cognitivas", value=f"```text\n{prompt_preview}\n```", inline=False)
+        return emb
+
     # Sem argumentos: dashboard geral de personas e canais com dropdown interativo
     if not ctx.args:
         personas_cat = listar_personas_disponiveis()
         linhas = [
-            "🎭 **CENTRAL DE PERSONAS COGNITIVAS**",
-            "Consulte personas disponíveis, troque no menu interativo ou configure canais:\n",
+            "🎭 **CENTRAL DE PERSONAS COGNITIVAS (IDEA-26 & IDEA-27)**",
+            "Consulte personas disponíveis, troque no menu interativo ou configure identidades:\n",
             f"**Personas no Catálogo ({len(personas_cat)}):**",
         ]
         for p in personas_cat[:8]:
@@ -297,7 +334,9 @@ async def cmd_persona(ctx: CommandContext) -> None:
 
         # Status do canal atual
         p_atual = obter_persona_canal(channel_id)
-        if p_atual and p_atual.get("persona_slug"):
+        if p_atual and p_atual.get("display_name"):
+            linhas.append(f"\n📍 **Canal Atual (`#{channel_name}`):** Persona `{p_atual['display_name']}` ativa (temp: `{p_atual['temperature']}`)")
+        elif p_atual and p_atual.get("persona_slug"):
             linhas.append(f"\n📍 **Canal Atual (`#{channel_name}`):** Persona ativa `{p_atual['persona_slug']}` (temp: `{p_atual['temperature']}`)")
         elif p_atual:
             linhas.append(f"\n📍 **Canal Atual (`#{channel_name}`):** Persona customizada ativa (temp: `{p_atual['temperature']}`)")
@@ -305,13 +344,13 @@ async def cmd_persona(ctx: CommandContext) -> None:
             linhas.append(f"\n📍 **Canal Atual (`#{channel_name}`):** Assistente padrão ativo")
 
         linhas.extend([
-            "\n💡 **Troca Rápida de Persona:**",
-            "Utilize o menu dropdown interativo abaixo para selecionar e ativar qualquer persona neste canal instantaneamente!\n",
-            "**Comandos Úteis:**",
-            f"• `{COMMAND_PREFIX}persona lista` — Ver catálogo completo",
-            f"• `{COMMAND_PREFIX}persona salvar <id> <prompt>` — Cadastrar nova persona no catálogo",
-            f"• `{COMMAND_PREFIX}persona canal ver` — Inspecionar detalhes do canal",
-            f"• `{COMMAND_PREFIX}persona canal reset` — Restaurar assistente padrão",
+            "\n💡 **Identidade & Comandos Rápidos:**",
+            f"• `{COMMAND_PREFIX}persona ver` — Exibe card com Avatar, Nome, Idade e Bio",
+            f"• `{COMMAND_PREFIX}persona editar` — Abre formulário interativo de identidade",
+            f"• `{COMMAND_PREFIX}persona avatar <url>` — Altera imagem de perfil do canal",
+            f"• `{COMMAND_PREFIX}persona identidade <nome> | <idade> | <bio>` — Define perfil",
+            f"• `{COMMAND_PREFIX}persona fixar` / `{COMMAND_PREFIX}persona destravar` — Controla evolução de 7 dias",
+            f"• `{COMMAND_PREFIX}persona canal reset` — Restaura assistente padrão",
         ])
         view_dropdown = criar_view_selecao_persona(
             channel_id=channel_id,
@@ -323,6 +362,80 @@ async def cmd_persona(ctx: CommandContext) -> None:
         return
 
     sub = ctx.args[0].lower()
+
+    # Subcomando: ver / status (Inspecionar persona ativa com Embed rico)
+    if sub in ("ver", "status", "info"):
+        persona = obter_persona_canal(channel_id)
+        embed_status = _gerar_embed_status_persona(persona)
+        view_dropdown = criar_view_selecao_persona(
+            channel_id=channel_id,
+            author_id=ctx.author.id,
+            guild_id=guild_id,
+            channel_name=channel_name,
+        )
+        await ctx.reply(embed=embed_status, view=view_dropdown)
+        return
+
+    # Subcomando: editar / modal (Dispara botão que abre o formulário nativo do Discord)
+    if sub in ("editar", "modal", "customizar"):
+        view_modal = criar_view_modal_persona(channel_id=channel_id)
+        await ctx.reply(
+            "🎭 **Editor de Identidade Multimodal da Persona (IDEA-27):**\n"
+            "Clique no botão abaixo para abrir o formulário nativo e configurar Nome, Idade, Avatar e Bio:",
+            view=view_modal,
+        )
+        return
+
+    # Subcomando: avatar (Define imagem ou semente DiceBear da persona)
+    if sub == "avatar":
+        if len(ctx.args) < 2:
+            await ctx.reply(
+                f"❓ Uso: `{COMMAND_PREFIX}persona avatar <url_da_imagem | semente_dicebear>`\n"
+                f"• Exemplo URL: `{COMMAND_PREFIX}persona avatar https://i.imgur.com/exemplo.png`\n"
+                f"• Exemplo Semente: `{COMMAND_PREFIX}persona avatar cyberpunk-bot`"
+            )
+            return
+        arg_av = ctx.args[1].strip()
+        if arg_av.startswith("http://") or arg_av.startswith("https://"):
+            res = definir_avatar_canal(channel_id=channel_id, avatar_url=arg_av)
+        else:
+            res = definir_avatar_canal(channel_id=channel_id, avatar_seed=arg_av)
+        await ctx.reply(res["mensagem"])
+        return
+
+    # Subcomando: identidade (Define nome, idade e bio)
+    if sub in ("identidade", "perfil", "bio"):
+        if len(ctx.args) < 2:
+            await ctx.reply(
+                f"❓ Uso: `{COMMAND_PREFIX}persona identidade <Nome> | <Idade> | <Biografia>`\n"
+                f"• Exemplo: `{COMMAND_PREFIX}persona identidade Dra. Neusa | 54 anos | Contadora pericial experiente e cética.`"
+            )
+            return
+        corpo = " ".join(ctx.args[1:]).strip()
+        partes = [p.strip() for p in corpo.split("|")]
+        nome_arg = partes[0] if len(partes) > 0 and partes[0] else None
+        idade_arg = partes[1] if len(partes) > 1 and partes[1] else None
+        bio_arg = partes[2] if len(partes) > 2 and partes[2] else None
+        res = definir_identidade_canal(
+            channel_id=channel_id,
+            display_name=nome_arg,
+            age=idade_arg,
+            bio=bio_arg,
+        )
+        await ctx.reply(res["mensagem"])
+        return
+
+    # Subcomando: fixar / travar (Desativa a metamorfose automática)
+    if sub in ("fixar", "travar", "lock", "congelar"):
+        res = definir_trava_persona_canal(channel_id=channel_id, is_locked=True)
+        await ctx.reply(res["mensagem"])
+        return
+
+    # Subcomando: destravar / desfixar (Ativa a metamorfose automática)
+    if sub in ("destravar", "descongelar", "unlock", "adaptativo"):
+        res = definir_trava_persona_canal(channel_id=channel_id, is_locked=False)
+        await ctx.reply(res["mensagem"])
+        return
 
     # 1. Visualizar personas disponíveis no catálogo com dropdown interativo
     if sub in ("lista", "listar", "disponiveis", "catalogo", "presets"):
@@ -472,22 +585,14 @@ async def cmd_persona(ctx: CommandContext) -> None:
 
         if acao in ("ver", "show", "status"):
             persona = obter_persona_canal(channel_id)
+            embed_status = _gerar_embed_status_persona(persona)
             view_dropdown = criar_view_selecao_persona(
                 channel_id=channel_id,
                 author_id=ctx.author.id,
                 guild_id=guild_id,
                 channel_name=channel_name,
             )
-            if not persona:
-                await ctx.reply(f"ℹ️ O canal `{channel_name}` está utilizando o assistente padrão.", view=view_dropdown)
-                return
-            mod_txt = f" | **Modelo:** `{persona['model_override']}`" if persona["model_override"] else ""
-            await ctx.reply(
-                f"🎭 **Configurações de Persona de `{channel_name}`:**\n"
-                f"• **Temperatura:** `{persona['temperature']}`{mod_txt}\n\n"
-                f"**Prompt do Canal:**\n```text\n{persona['system_prompt']}\n```",
-                view=view_dropdown,
-            )
+            await ctx.reply(embed=embed_status, view=view_dropdown)
             return
 
         if not is_admin:

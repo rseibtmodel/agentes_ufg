@@ -1,0 +1,53 @@
+{
+  "id": "ALQ-26110801",
+  "titulo_lapidado": "Identidade Multimodal de Personas com Metamorfose Semanal & Bag-of-Words Local",
+  "conceito_original": "Permitir definir avatar/imagem, imagem padrão, nome, idade e bio para a persona de cada canal, com evolução dinâmica e adaptativa a cada 7 dias baseada nas conversas.",
+  "score": 9.44,
+  "classificacao": "ouro_puro",
+  "criterios_score": {
+    "singularidade": 9.6,
+    "assimetria_valor": 9.4,
+    "viabilidade_custo": 9.2,
+    "justificativa": "A proposta atinge altíssima singularidade transformando um bot único em uma equipe de agentes vivos por canal. O custo computacional e de tokens foi blindado com a técnica de Bag-of-Words local (0 tokens consumidos para extração e menos de 300 tokens na síntese de perfil)."
+  },
+  "nucleo_intransgressivel": "O dinamismo fisiognômico semanal: o bot transmuta seu arquétipo, idade e avatar como um espelho cultural vivo do canal, sem depender de configuração manual constante.",
+  "criticas_absorvidas": [
+    {
+      "especialista": "critic",
+      "alerta_original": "Custo de varredura de histórico bruto de 7 dias e risco de contaminação por conversas caóticas/tóxicas.",
+      "blindagem_incorporada": "Parser local de Bag-of-Words (Top 100 termos mais frequentes com remoção de stopwords em Python puro) e injeção de diretrizes éticas determinísticas no prompt de síntese de perfil."
+    },
+    {
+      "especialista": "critic",
+      "alerta_original": "Ruptura de vínculo caso o canal adore uma persona e ela mude compulsoriamente no 7º dia.",
+      "blindagem_incorporada": "Mecanismo de 'Lock Soberano' com botão Discord `[🔒 Fixar Persona]`, tornando a persona permanente e congelando o ciclo semanal até o usuário decidir reabrir."
+    },
+    {
+      "especialista": "hacker",
+      "alerta_original": "Rate limit brutal da API do Discord ao tentar alterar avatar e nome global do bot.",
+      "blindagem_incorporada": "Despacho desacoplado via Webhook por canal (`username` e `avatar_url` dinâmicos por mensagem) com fallback suave para Author Header em Embed quando não houver permissão de webhook."
+    },
+    {
+      "especialista": "impact",
+      "alerta_original": "Fosso de retenção comunitária e perda de histórico de personas passadas.",
+      "blindagem_incorporada": "Criação do Álbum de Metamorfoses (`evolution_history_json` no SQLite), permitindo ao canal colecionar suas personas passadas e reativá-las a qualquer momento."
+    },
+    {
+      "especialista": "ux",
+      "alerta_original": "Falta de visibilidade da transição e risco de avatares com links quebrados.",
+      "blindagem_incorporada": "Cerimônia pública no canal a cada 7 dias com Card Embed rico, botões interativos (`Fixar`, `Re-rolar`, `Customizar`) e avatares gerados deterministicamente via DiceBear/Avatares locais curados."
+    }
+  ],
+  "proposta_executavel": {
+    "resumo_arquitetural": "Extensão do schema SQLite WAL em `channel_personas` com campos identitários (`display_name`, `avatar_url`, `age`, `bio`, `is_adaptive`, `is_locked`, `last_evolved_at`). Motor assíncrono `persona_evolution_worker` executando varredura semanal via Bag-of-Words local em Python puro (`collections.Counter`), sintetizando novo perfil via LLM e despachando via Webhook/Embed.",
+    "mecanica_operacional": "O usuário pode configurar manualmente via Discord Modal (`!persona editar`) ou deixar no modo adaptativo padrão. A cada 7 dias, o bot analisa os 100 termos mais frequentes do canal, forja uma nova persona refletindo o clima do grupo e publica um Card Interativo no canal com opção de travar, re-rolar ou ajustar.",
+    "stack_e_protocolos": "Python 3.12+, discord.py 2.x, SQLite (WAL mode), Webhooks do Discord, Regex/Counter local-first e DiceBear API / assets locais."
+  },
+  "laboratorio_autopsia": {
+    "falha_estrutural_fatal": null,
+    "residuo_reaproveitavel": null
+  },
+  "proximo_passo_recomendado": "Solicitar ao Arquiteto (/architect) a elaboração da ADR e Spec técnica da IDEA-27 em `discord/SPECs/SPECS_IDEIAS/`, seguida da migration no `persona_manager.py` pelo /coder.",
+  "historico_iteracoes": []
+}
+

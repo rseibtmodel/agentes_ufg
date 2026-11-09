@@ -86,6 +86,70 @@ async def _send_gateway(
     )
 
 
+_WEBHOOK_CACHE: Dict[str, Any] = {}
+
+
+async def _obter_webhook_canal(channel: Any) -> Optional[Any]:
+    """Obtém ou cria webhook com cache em memória para envio polimórfico (IDEA-27)."""
+    if not hasattr(channel, "guild") or not getattr(channel, "guild", None):
+        return None
+    if not hasattr(channel, "webhooks") or not hasattr(channel, "create_webhook"):
+        return None
+
+    c_id = str(channel.id)
+    if c_id in _WEBHOOK_CACHE:
+        return _WEBHOOK_CACHE[c_id]
+
+    try:
+        whs = await channel.webhooks()
+        for wh in whs:
+            if wh.name == "Antigravity Dispatcher":
+                _WEBHOOK_CACHE[c_id] = wh
+                return wh
+        novo_wh = await channel.create_webhook(name="Antigravity Dispatcher", reason="Polimorfismo de Personas (IDEA-27)")
+        _WEBHOOK_CACHE[c_id] = novo_wh
+        return novo_wh
+    except Exception as ex:
+        logger.debug("Permissão de webhook indisponível no canal %s: %s", c_id, ex)
+        return None
+
+
+async def _despachar_resposta_persona(
+    channel: Any,
+    content: str,
+    persona: Optional[Dict[str, Any]] = None,
+    view: Optional[discord.ui.View] = None,
+    reference: Optional[Any] = None,
+) -> Any:
+    """Despacha mensagem com a identidade multimodal da persona (Webhook Masquerade ou Embed)."""
+    if not persona or (not persona.get("display_name") and not persona.get("avatar_url") and not persona.get("avatar_seed")):
+        return await _send_gateway(channel, content=content, view=view, reference=reference)
+
+    from persona_manager import obter_avatar_persona
+    nome_display = persona.get("display_name") or persona.get("persona_id") or "Assistente"
+    avatar_url = obter_avatar_persona(persona)
+
+    # 1. Tentativa de Webhook Masquerade (Imersão Total: nome e avatar nativos no chat)
+    webhook = await _obter_webhook_canal(channel)
+    if webhook:
+        try:
+            return await webhook.send(
+                content=content,
+                username=str(nome_display)[:32],
+                avatar_url=avatar_url,
+                view=view,
+                wait=True,
+            )
+        except Exception as ex_wh:
+            logger.debug("Falha no webhook masquerade canal %s (%s). Usando fallback Embed.", getattr(channel, "id", None), ex_wh)
+
+    # 2. Fallback gracioso: Embed com Author Header
+    embed = discord.Embed(description=content, color=0x2B2D31)
+    idade_txt = f" • {persona['age']}" if persona.get("age") else ""
+    embed.set_author(name=f"{nome_display}{idade_txt}", icon_url=avatar_url)
+    return await _send_gateway(channel, embed=embed, view=view, reference=reference)
+
+
 def detectar_solicitacao_modelo(texto: str) -> Optional[str]:
     """Identifica se o usuário solicitou alternar o modelo/provedor de IA (local, google, auto) via chat."""
     if not texto:
@@ -398,14 +462,22 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
             # Monta System Prompt único (modelos modernos no LM Studio exigem no máximo 1 system message e no início)
             partes_system = [SYSTEM_PROMPT]
 
-            # Injeção da Persona do Canal (IDEA-26) - Camada 2
+            # Injeção da Persona do Canal (IDEA-26 / IDEA-27) - Camada 2
             if persona_canal and persona_canal.get("system_prompt"):
-                nome_p = persona_canal.get("persona_id") or "personalizada"
-                prompt_persona = (
-                    f"[DIRETRIZES DA PERSONA DESTE CANAL - '{nome_p.upper()}']:\n"
-                    f"{persona_canal['system_prompt']}"
-                )
-                partes_system.append(prompt_persona)
+                nome_p = persona_canal.get("display_name") or persona_canal.get("persona_id") or "personalizada"
+                idade_p = persona_canal.get("age")
+                bio_p = persona_canal.get("bio")
+
+                bloco_id = [f"[DIRETRIZES DA PERSONA DESTE CANAL - '{str(nome_p).upper()}']:"]
+                if persona_canal.get("display_name"):
+                    bloco_id.append(f"- Nome de Exibição do Personagem: {persona_canal['display_name']}")
+                if idade_p:
+                    bloco_id.append(f"- Idade / Maturação: {idade_p}")
+                if bio_p:
+                    bloco_id.append(f"- Biografia / Contexto de Fundo: {bio_p}")
+                bloco_id.append(f"- Diretrizes de Comportamento e Tom:\n{persona_canal['system_prompt']}")
+                bloco_id.append("Instrução Mandatória: Incorpore integralmente este personagem em suas respostas sem quebrar a imersão.")
+                partes_system.append("\n".join(bloco_id))
 
             # Injeção das Notas Temáticas Isoladas do Canal (IDEA-25)
             if notas_topico:
@@ -526,10 +598,10 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
 
             try:
                 if modo_resposta == "texto":
-                    # Opção 1: Apenas Texto
+                    # Opção 1: Apenas Texto (com identidade polimórfica da Persona)
                     for idx, chunk in enumerate(chunks):
                         v = view_to_attach if idx == len(chunks) - 1 else None
-                        await _send_gateway(message.channel, content=chunk, view=v)
+                        await _despachar_resposta_persona(message.channel, content=chunk, persona=persona_canal, view=v)
 
                 elif modo_resposta == "audio":
                     # Opção 2: Apenas Áudio (Francisca pt-BR via edge-tts)
@@ -547,13 +619,13 @@ async def processar_mensagem(message: discord.Message, client: discord.Client) -
                         logger.warning("Falha na síntese de áudio: %s. Enviando texto como fallback.", erro_tts)
                         for idx, chunk in enumerate(chunks):
                             v = view_to_attach if idx == len(chunks) - 1 else None
-                            await _send_gateway(message.channel, content=chunk, view=v)
+                            await _despachar_resposta_persona(message.channel, content=chunk, persona=persona_canal, view=v)
 
                 elif modo_resposta == "ambos":
                     # Opção 3: Texto e Áudio Simultâneos
                     for idx, chunk in enumerate(chunks):
                         v = view_to_attach if idx == len(chunks) - 1 else None
-                        await _send_gateway(message.channel, content=chunk, view=v)
+                        await _despachar_resposta_persona(message.channel, content=chunk, persona=persona_canal, view=v)
 
                     caminho_audio, erro_tts = await sintetizar_fala_edge(resposta_texto)
                     if caminho_audio and caminho_audio.exists():
