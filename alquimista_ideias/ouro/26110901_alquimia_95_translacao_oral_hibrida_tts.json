@@ -1,0 +1,53 @@
+{
+  "id": "ALQ-26110901",
+  "titulo_lapidado": "Pipeline de Roteirização Fonética & Translação Oral Híbrida para TTS (IDEA-28)",
+  "conceito_original": "Eliminar ruídos visuais lidos pelo áudio TTS (emojis, figurinhas, metadados de modelo, links e markdown) e criar um modo de fala oralizado com preservação integral de conteúdo e alternância entre motor Local e IA.",
+  "score": 9.52,
+  "classificacao": "ouro_puro",
+  "criterios_score": {
+    "singularidade": 9.6,
+    "assimetria_valor": 9.5,
+    "viabilidade_custo": 9.4,
+    "justificativa": "A proposta atinge patamar de estado da arte para interfaces conversacionais de voz no Discord. Transforma a síntese de voz (frequentemente robotizada e barulhenta) em uma experiência de audiopodcast humanizado, com custo zero e zero latência no modo áudio nativo (injeção na inferência primária) e flexibilidade modular entre normalização determinística local e roteirização assistida por IA."
+  },
+  "nucleo_intransgressivel": "O desacoplamento entre mídia visual e mídia acústica: o texto do chat é formatado para os olhos (com tabelas, markdown e links), enquanto o áudio é formatado para os ouvidos (foneticamente limpo, fluente e sem ruídos tipográficos), mantendo 100% da integridade fática e conceitual.",
+  "criticas_absorvidas": [
+    {
+      "especialista": "critic",
+      "alerta_original": "Risco de omissão ou distorção de prazos, números ou argumentos técnicos se o áudio for sumarizado de forma arbitrária.",
+      "blindagem_incorporada": "Diretriz inegociável de integralidade semântica: a translação oral foca exclusivamente na desobstrução de ruídos visuais (emojis, tags, badges, markdown) e prosódia, preservando 100% dos dados factuais com temperatura zero."
+    },
+    {
+      "especialista": "critic",
+      "alerta_original": "Engasgos e falhas do Edge-TTS ao processar strings muito longas (> 2.500 caracteres) com texto integral.",
+      "blindagem_incorporada": "Segmentação fonética inteligente no `audio_normalizer.py`, dividindo o texto em frases com pontuação natural antes do streaming de áudio."
+    },
+    {
+      "especialista": "hacker",
+      "alerta_original": "Custo de tokens e latência dobrada se toda mensagem exigir uma segunda inferência de LLM para ser narrada.",
+      "blindagem_incorporada": "Ativação do 'Modo Áudio Nativo': quando o canal ou usuário estiver configurado em `modo = audio`, a diretriz oral é injetada diretamente no System Prompt da inferência principal, gerando o texto falado na primeira chamada com zero custo adicional."
+    },
+    {
+      "especialista": "ux",
+      "alerta_original": "Falta de controle e clareza do usuário sobre como o bot fala ou lê.",
+      "blindagem_incorporada": "Criação de submenu interativo no comando `!voz` via Discord UI (`Select` + `Buttons`), permitindo calibrar o motor de translação (`⚡ Rápido / Local` vs `🧠 Roteirizado / IA`) e a velocidade de fala."
+    },
+    {
+      "especialista": "architect",
+      "alerta_original": "Acoplamento indevido no `tts_manager.py` misturando lógica de I/O com sanitização de texto.",
+      "blindagem_incorporada": "Criação do módulo dedicado `discord/audio_normalizer.py` com regexes pré-compilados e dicionários de pronúncia para símbolos comuns (`%`, `$`, `&`, `km/h`, datas)."
+    }
+  ],
+  "proposta_executavel": {
+    "resumo_arquitetural": "Implementação do módulo `audio_normalizer.py` desacoplado do sintetizador edge-tts. Extensão do schema relacional em `user_voice_settings` no SQLite para suportar preferência de translação (`local` vs `llm`). Injeção contextual de diretriz oral no System Prompt em `message_handler.py` quando `modo_resposta == 'audio'`. Submenu interativo com botões no comando `!voz`.",
+    "mecanica_operacional": "No modo `audio`, a resposta já é gerada em tom conversacional direto. No modo `ambos`, a LLM gera a resposta visual rica para o chat e o motor selecionado (Local ou IA) prepara o roteiro fonético para a Francisca narrar sem ler emojis, figurinhas ou metadados de infraestrutura.",
+    "stack_e_protocolos": "Python 3.12+, edge-tts (pt-BR-FranciscaNeural), regex pré-compilado Unicode, SQLite WAL (`user_voice_settings`), discord.ui (Views e Selects) e Gemini Flash / LM Studio local."
+  },
+  "laboratorio_autopsia": {
+    "falha_estrutural_fatal": null,
+    "residuo_reaproveitavel": null
+  },
+  "proximo_passo_recomendado": "Formalizar a IDEA-28 pelo /architect em `discord/SPECs/SPECS_IDEIAS/28_ROTEIRIZACAO_FONETICA_E_AUDIO_TRANSLATION_TTS.md` e emitir a Ordem de Serviço via /agent_manager.",
+  "historico_iteracoes": []
+}
+
