@@ -1,37 +1,33 @@
 # Diagramas de Arquitetura — Discord AI Bot
 
-Este diretório contém os diagramas visuais de arquitetura do **Discord AI Bot (Antigravity v3.5.0)**, detalhando os subsistemas, a interconexão de módulos e a jornada de processamento de ponta a ponta de uma mensagem.
+Este diretório contém os diagramas visuais e infográficos de arquitetura do **Discord AI Bot (Antigravity)**, detalhando os subsistemas, a interconexão de módulos e a esteira de processamento de ponta a ponta de uma mensagem.
 
 ---
 
-## 1. Visão Geral da Arquitetura e Interconexão Modular
+## 1. Visão Geral da Arquitetura e Interconexão Modular (v3.6.0 Atualizada)
 
-O diagrama a seguir sintetiza a topologia dos módulos do sistema divididos em suas 7 camadas principais:
+O diagrama a seguir sintetiza a topologia dos módulos do sistema consolidada na versão **v3.6.0**, incorporando o desacoplamento de comandos rápidos, a esteira de componentes de UI e o ferramental expandido de pesquisa:
 
-![Visão Geral da Arquitetura](visao_geral_arquitetura.jpg)
+![Visão Geral da Arquitetura v3.6.0](visao_geral_arquitetura_v36.jpg)
 
-### Camadas Representadas:
-1. **Layer 1 — Discord Client & Gateway:** Conexão WebSocket assíncrona e captura de eventos `on_message`.
-2. **Layer 2 — Ingestão Multimodal:** Transcrição em tempo real via Faster-Whisper (STT) e extração de estrutura TOC de PDFs via PyMuPDF.
-3. **Layer 3 — Roteador & Contexto:** `message_handler`, interceptação de comandos e isolamento assíncrono com `ContextVars`.
-4. **Layer 4 — Memória Híbrida & Base de Conhecimento:** Histórico relacional em SQLite (WAL), memória semântica do usuário em ChromaDB e coleções isoladas de notas por canal (Knowledge Hub).
-5. **Layer 5 — Raciocínio Cognitivo & Roteamento Híbrido:** Inferência comutável entre LM Studio (Local) e Google Gemini Cloud (Nuvem), com Dynamic Tool RAG e ciclo autônomo de Function Calling.
-6. **Layer 6 — Barramento Outbox (Message Gateway):** Fila prioritária Dual-Tier, deduplicação anti-spam com SHA-256 e Circuit Breaker.
-7. **Layer 7 — Entrega Multimodal:** Síntese neural de voz com Edge-TTS (`pt-BR-FranciscaNeural`), views interativas (`discord.ui.View`) e envio particionado ao Discord.
+### Camadas Representadas (v3.6.0):
+1. **Layer 1 — Discord Client & Gateway:** Conexão WebSocket assíncrona, lockfile de instância única (`.bot.lock`) e captura de eventos `on_message`.
+2. **Layer 2 — Ingestão Multimodal:** Transcrição em tempo real via Faster-Whisper (STT CPU int8 VAD) e catalogação estruturada TOC de PDFs com PyMuPDF.
+3. **Layer 3 — Roteador & Contexto Assíncrono:** Interceptação imediata de comandos prefixados (`!`) via `CommandRegistry` (Fast-Path <50ms sem LLM), isolamento estrito de corrotinas com `ContextVars` (`context_manager.py`) e classificador de intenções naturais.
+4. **Layer 4 — Memória Híbrida & Knowledge Hub:** Histórico relacional ACID em SQLite (modo WAL), coleções semânticas de longo prazo do usuário no ChromaDB e coleções temáticas isoladas de notas por canal (`topic_notes_{channel_id}`).
+5. **Layer 5 — Raciocínio Cognitivo & Roteamento Híbrido:** Inferência comutada entre LM Studio (Local/Privado) e Google Gemini Cloud (Failover/Flash/Pro), com Dynamic Tool RAG por similaridade de cosseno, ciclo autônomo de Function Calling (46 ferramentas) e módulo de Pesquisa Web / Deep Research.
+6. **Layer 6 — Motor de UI Interativa:** Renderização de Views com botões, seletores dinâmicos e modais (`ui_components.py` / `discord.ui`).
+7. **Layer 7 — Barramento Outbox (Message Gateway):** Fila prioritária Dual-Tier, algoritmo Leaky Bucket com proteção anti-ban, deduplicação anti-spam por hash SHA-256 e Circuit Breaker.
+8. **Layer 8 — Entrega Multimodal:** Síntese neural de voz com Edge-TTS, divisão em blocos seguros (<= 1900 caracteres) e formatação rica com Rich Embeds.
 
 ---
 
-## 2. Fluxo Detalhado do Processamento de Mensagens
+## 2. Histórico & Diagrama de Fluxo de Mensagens (v3.5.0 Legado)
 
-O diagrama a seguir ilustra a esteira completa percorrida por qualquer dado de entrada do usuário até a entrega final:
+Para referência histórica da versão v3.5.0:
 
-![Fluxo de Processamento de Mensagem](fluxo_processamento_mensagem.jpg)
+- **[Fluxo de Processamento de Mensagem (v3.5.0)](fluxo_processamento_mensagem.jpg)**
+- **[Visão Geral da Arquitetura Legada (v3.5.0)](visao_geral_arquitetura.jpg)**
 
-### Etapas da Jornada:
-1. **User Input:** Mensagem de texto, áudio de voz ou anexo PDF enviado pelo usuário.
-2. **Input Ingestion:** Extração multimodal (Whisper CPU int8 VAD ou catalogação de metadados de PDF).
-3. **Routing & Intent Interception:** Identificação de comandos `!`, comandos por voz ou conversação contínua.
-4. **Multi-Level Context & Memory:** Resgate de notas do canal no ChromaDB, memórias gerais do usuário e histórico recente no SQLite.
-5. **Single System Prompt Assembly:** Consolidação hierárquica estrita (Regras Nucleares + Persona do Canal + Contexto RAG) em uma única mensagem `system`.
-6. **Cognitive Inference Engine:** Roteamento híbrido (Local vs Nuvem), seleção de ferramentas (Tool RAG) e execução recursiva de tools.
-7. **Output Gateway & Delivery:** Fila do Outbox com deduplicação SHA-256, geração de áudio Edge-TTS, divisão em blocos <= 1900 caracteres e despacho ao canal.
+> ℹ️ **Nota de Auditoria Arquitetural (OS-013 - 11/11/2026):**  
+> Os diagramas legados de outubro/2026 continuam válidos no conceito central de memória dual e outbox, porém foram complementados pela v3.6.0 com a formalização do **Fast-Path desacoplado** (comandos determinísticos sem custo de LLM), suporte nativo a **Pesquisa Web & Deep Research**, componentes interativos de UI (`discord.ui`) e camada de governança do ecossistema de 15 agentes.

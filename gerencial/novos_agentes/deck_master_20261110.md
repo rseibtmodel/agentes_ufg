@@ -34,3 +34,4 @@ O ecossistema multiagente alcançou alta maturidade técnica (14 agentes, roteam
 - Regras: [`.agents/rules/deck_master.md`](file:///Users/rodrigomodel/antigravity/.agents/rules/deck_master.md)
 - Roster: [`AGENTS.md`](file:///Users/rodrigomodel/antigravity/AGENTS.md)
 - Diretório de Saída: [`gerencial/apresentacoes/`](file:///Users/rodrigomodel/antigravity/gerencial/apresentacoes/)
+
