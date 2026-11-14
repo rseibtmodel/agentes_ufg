@@ -126,7 +126,7 @@ async def on_ready():
 
     # Inicia o poller do Radar de Feeds Técnicos (RSS, ArXiv e GitHub) (IDEA-29)
     from radar_manager import radar_manager
-    asyncio.create_task(radar_manager.iniciar_poller())
+    asyncio.create_task(radar_manager.iniciar_poller(client))
 
     # Pré-aquece o cache de embeddings das ferramentas para acelerar o Tool Filtering
     asyncio.create_task(inicializar_cache_ferramentas())

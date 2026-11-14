@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 from digest_manager import (
     atualizar_configuracao_digest,
+    iniciar_worker_digest,
     init_digest_db,
     obter_configuracao_digest,
     _digests_em_andamento,
@@ -53,7 +54,6 @@ class TestDigestCatchUp(unittest.IsolatedAsyncioTestCase):
                 mock_dt.now.return_value = fake_agora
                 mock_dt.strftime = datetime.strftime
 
-                from digest_manager import iniciar_worker_digest
                 # Executa uma rodada do worker com intervalo simulado 0
                 await iniciar_worker_digest(mock_client, intervalo_segundos=0)
 

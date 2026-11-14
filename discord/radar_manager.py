@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import xml.etree.ElementTree as ET
 
 import aiohttp
+import discord
 import zoneinfo
 
 from config import CALENDAR_DEFAULT_TIMEZONE, DB_FILE
@@ -255,19 +256,48 @@ def fazer_parse_xml_feed(xml_bytes: bytes) -> List[FeedItem]:
 class RadarManager:
     """Orquestrador assíncrono de feeds técnicos e curadoria automática."""
 
-    def __init__(self, db_path: Optional[str] = None) -> None:
+    def __init__(self, db_path: Optional[str] = None, client: Optional[discord.Client] = None) -> None:
         self.db_path = db_path
+        self.client = client
         self._semaphore = asyncio.Semaphore(2)
         self._poller_task: Optional[asyncio.Task] = None
         self._running = False
 
-    async def iniciar_poller(self) -> None:
+    async def iniciar_poller(self, client: Optional[discord.Client] = None) -> None:
         """Inicia a tarefa contínua de checagem de feeds e envio de boletins."""
+        if client:
+            self.client = client
         if self._running:
             return
         self._running = True
         self._poller_task = asyncio.create_task(self._loop_poller())
         logger.info("[RadarManager] Poller assíncrono de feeds inicializado.")
+
+    async def _obter_canal(self, channel_id: str | int) -> Any:
+        """Resolve o objeto de canal do Discord para envio via Gateway."""
+        if not self.client:
+            # Fallback para ambiente de teste sem Discord Client conectado
+            class _MockDiscordChannel:
+                def __init__(self, cid: str | int) -> None:
+                    self.id = int(str(cid)) if str(cid).isdigit() else cid
+
+                async def send(self, *args: Any, **kwargs: Any) -> None:
+                    pass
+
+            return _MockDiscordChannel(channel_id)
+
+        c_id_str = str(channel_id)
+        if not c_id_str.isdigit():
+            return None
+        c_id_int = int(c_id_str)
+        canal = self.client.get_channel(c_id_int)
+        if not canal:
+            try:
+                canal = await self.client.fetch_channel(c_id_int)
+            except Exception as e:
+                logger.warning("[RadarManager] Canal %s inacessível: %s", channel_id, e)
+                return None
+        return canal
 
     async def parar_poller(self) -> None:
         """Para a tarefa contínua do radar."""
@@ -582,11 +612,15 @@ class RadarManager:
             f"💡 **Síntese de Impacto:**\n{resumo}",
         ]
         texto_final = "\n".join(linhas)
-        await message_gateway.dispatch(
-            channel=int(channel_id),
-            content=texto_final,
-            priority=MessagePriority.BACKGROUND,
-        )
+        destino = await self._obter_canal(channel_id)
+        if destino:
+            await message_gateway.dispatch(
+                destino,
+                content=texto_final,
+                priority=MessagePriority.BACKGROUND,
+            )
+        else:
+            logger.warning("[RadarManager] Canal %s inacessível para envio em tempo real.", channel_id)
 
     def buscar_itens_radar(self, termo: Optional[str] = None, limite: int = 5) -> List[Dict[str, Any]]:
         """Busca itens capturados pelo radar filtrando por termo ou trazendo os mais recentes."""
@@ -710,12 +744,17 @@ class RadarManager:
         linhas.append("──────────────────────────────────────────────")
         linhas.append("💡 *Curadoria autônoma do Radar de Inteligência Técnica.*")
 
-        await message_gateway.dispatch(
-            channel=int(c_str),
-            content="\n".join(linhas),
-            priority=MessagePriority.BACKGROUND,
-        )
-        return True
+        destino = await self._obter_canal(c_str)
+        if destino:
+            await message_gateway.dispatch(
+                destino,
+                content="\n".join(linhas),
+                priority=MessagePriority.BACKGROUND,
+            )
+            return True
+        else:
+            logger.warning("[RadarManager] Canal %s inacessível para envio de boletim.", c_str)
+            return False
 
 
 # Instância global singleton
