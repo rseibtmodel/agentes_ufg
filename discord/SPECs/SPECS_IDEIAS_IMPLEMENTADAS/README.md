@@ -20,6 +20,8 @@ Este diretório reúne as especificações de ideias geradas e validadas atravé
 | **`IDEA-25`** | **Knowledge Hub Temático & RAG Isolado por Canal** | `v3.5.0` | Banco de notas temáticas por canal/thread com coleções ChromaDB estritamente isoladas, extração de hashtags e histórico SQLite separado. | [25_KNOWLEDGE_HUB_TEMATICO_E_RAG_ISOLADO_POR_CANAL.md](25_KNOWLEDGE_HUB_TEMATICO_E_RAG_ISOLADO_POR_CANAL.md) |
 | **`IDEA-26`** | **Personas & Overrides Cognitivos por Canal** | `v3.5.0` | Injeção hierárquica de System Prompt, controle de temperatura e overrides de modelo (local/flash/pro) por canal, integrando presets do Hub. | [26_PERSONAS_E_OVERRIDES_COGNITIVOS_POR_CANAL.md](26_PERSONAS_E_OVERRIDES_COGNITIVOS_POR_CANAL.md) |
 | **`IDEA-27`** | **Identidade Multimodal & Metamorfose Semanal** | `v3.6.0` | Webhook Masquerade com avatar e nome customizados no Discord e evolução semanal adaptativa zero-token via Bag-of-Words local. | [27_IDENTIDADE_MULTIMODAL_E_METAMORFOSE_SEMANAL.md](27_IDENTIDADE_MULTIMODAL_E_METAMORFOSE_SEMANAL.md) |
+| **`IDEA-28`** | **FinOps, Telemetria de Tokens & Observabilidade LLM** | `v4.0.0` | Contabilidade de tokens em tempo real (SQLite WAL), circuit breaker com fallback local e comandos !finops. | [28_FINOPS_TELEMETRIA_DE_TOKENS_E_CUSTOS_LLM.md](../SPECS_IDEIAS/28_FINOPS_TELEMETRIA_DE_TOKENS_E_CUSTOS_LLM.md) |
+| **`IDEA-29`** | **Radar Autônomo de RSS, ArXiv & GitHub** | `v4.0.0` | Curadoria contínua de feeds técnicos (GitHub releases .atom, ArXiv e RSS), filtragem Regex -> Síntese LLM e alertas tempo real/boletim. | [29_RADAR_AUTONOMO_RSS_E_CURADORIA_DE_FEEDS.md](../SPECS_IDEIAS/29_RADAR_AUTONOMO_RSS_E_CURADORIA_DE_FEEDS.md) |
 
 ---
 
@@ -37,3 +39,5 @@ As ideias entregues acima estão integradas ao código de produção do bot e es
 * `IDEA-24` -> [message_gateway.py](../../message_gateway.py) e barramento outbox (`MOD-INT-07`).
 * `IDEA-25` -> [topic_manager.py](../../topic_manager.py) e comandos `!topico`, `!topicos`, `!buscar_topico` (`MOD-VIS-14`).
 * `IDEA-26` / `IDEA-27` -> [persona_manager.py](../../persona_manager.py), [persona_evolution_manager.py](../../persona_evolution_manager.py) e comando `!persona` (`MOD-VIS-15`).
+* `IDEA-28` -> [finops_manager.py](../../finops_manager.py), [finops_tools.py](../../tools/finops_tools.py) e comando `!finops` (`MOD-VIS-18`).
+* `IDEA-29` -> [radar_manager.py](../../radar_manager.py), [research_tools.py](../../tools/research_tools.py) e comando `!radar` (`MOD-VIS-19`).

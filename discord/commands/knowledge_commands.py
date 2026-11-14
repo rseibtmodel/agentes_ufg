@@ -40,6 +40,7 @@ from topic_manager import (
 )
 from ui_components import PDFChapterSelectView
 from vector_db import buscar_memorias_relevantes, contar_memorias, limpar_memoria_vetorial
+from radar_manager import radar_manager
 
 logger = logging.getLogger(__name__)
 
@@ -543,4 +544,140 @@ async def cmd_notas(ctx: CommandContext) -> None:
         linhas.append(f"• **`{n['id']}`**{tags_str}: {preview}")
 
     await ctx.reply("\n".join(linhas))
+
+
+@register_command(
+    name="radar",
+    description="Radar autônomo de RSS, ArXiv e GitHub com curadoria por IA (IDEA-29).",
+    usage=f"{COMMAND_PREFIX}radar [assinar|listar|remover|agora|boletim]",
+    category="Radar & Conhecimento",
+    example=f"{COMMAND_PREFIX}radar assinar vllm-project/vllm --tempo-real",
+    aliases=["feed", "rss"],
+)
+async def cmd_radar(ctx: CommandContext) -> None:
+    """Gerencia assinaturas e execuções do Radar de Feeds Técnicos."""
+    if not ctx.args:
+        ajuda = [
+            "📡 **RADAR AUTÔNOMO DE RSS, ARXIV & GITHUB (IDEA-29)**",
+            "",
+            "Comandos disponíveis:",
+            f"• `{COMMAND_PREFIX}radar assinar <fonte> [--tempo-real] [--boletim HH:MM] [--filtro 'regex']`",
+            "  *Fontes suportadas:* `dono/repo` (GitHub Releases), `arxiv:cs.AI` ou URL completa de RSS/Atom.",
+            f"• `{COMMAND_PREFIX}radar listar` — Lista suas assinaturas de feeds ativas.",
+            f"• `{COMMAND_PREFIX}radar remover <id>` — Cancela o monitoramento de uma assinatura.",
+            f"• `{COMMAND_PREFIX}radar agora` — Força a varredura e coleta imediata dos feeds agendados.",
+            f"• `{COMMAND_PREFIX}radar boletim` — Força a consolidação e envio imediato do boletim deste canal.",
+            "",
+            "💡 *Exemplos:*",
+            f"  `{COMMAND_PREFIX}radar assinar vllm-project/vllm --tempo-real`",
+            f"  `{COMMAND_PREFIX}radar assinar arxiv:cs.AI --boletim 09:00 --filtro 'reasoning|agents'`",
+            f"  `{COMMAND_PREFIX}radar assinar https://huggingface.co/blog/feed.xml`",
+        ]
+        await ctx.reply("\n".join(ajuda))
+        return
+
+    sub = ctx.args[0].lower()
+
+    if sub in ("listar", "list"):
+        user_id = str(ctx.author.id)
+        subs = radar_manager.listar_assinaturas(user_id=user_id)
+        if not subs:
+            await ctx.reply("ℹ️ Você não possui nenhuma assinatura ativa no Radar.\nAssine com `!radar assinar <fonte>`.")
+            return
+
+        linhas_subs = [f"📡 **SUAS ASSINATURAS NO RADAR ({len(subs)}):**\n"]
+        for s in subs:
+            modo_desc = "⚡ Tempo Real" if s["mode"] == "REALTIME" else f"📰 Boletim ({s['digest_time']})"
+            filtro_desc = f" | Filtro: `{s['keywords_regex']}`" if s["keywords_regex"] else ""
+            linhas_subs.append(
+                f"• **`ID {s['id']}`** `[{s['source_type']}]` <{s['source_url']}>\n"
+                f"  Modo: **{modo_desc}** | Canal: <#{s['channel_id']}>{filtro_desc}"
+            )
+        await ctx.reply("\n".join(linhas_subs))
+        return
+
+    if sub in ("remover", "del", "delete", "cancelar"):
+        if len(ctx.args) < 2 or not ctx.args[1].isdigit():
+            await ctx.reply(f"⚠️ Informe o ID da assinatura a remover. Ex: `{COMMAND_PREFIX}radar remover 1`")
+            return
+        sub_id = int(ctx.args[1])
+        removido = radar_manager.remover_assinatura(sub_id)
+        if removido:
+            await ctx.reply(f"✅ Assinatura `ID {sub_id}` removida com sucesso do Radar.")
+        else:
+            await ctx.reply(f"⚠️ Assinatura `ID {sub_id}` não foi encontrada.")
+        return
+
+    if sub in ("agora", "run", "scan"):
+        await ctx.reply("🔄 Executando ciclo de varredura imediata dos feeds do Radar...")
+        total = await radar_manager.processar_ciclo_agendado()
+        await ctx.reply(f"✅ Ciclo concluído. `{total}` assinatura(s) verificada(s).")
+        return
+
+    if sub in ("boletim", "digest"):
+        await ctx.reply(f"📰 Consolidando e despachando boletim pendente para o canal <#{ctx.channel.id}>...")
+        enviou = await radar_manager.enviar_boletim_canal(ctx.channel.id)
+        if enviou:
+            await ctx.reply("✅ Boletim despachado com sucesso!")
+        else:
+            await ctx.reply("ℹ️ Não há novidades acumuladas no buffer para este canal no momento.")
+        return
+
+    if sub in ("assinar", "add", "subscribe"):
+        if len(ctx.args) < 2:
+            await ctx.reply(
+                f"⚠️ Informe a fonte a monitorar. Exemplos:\n"
+                f"• `{COMMAND_PREFIX}radar assinar vllm-project/vllm --tempo-real`\n"
+                f"• `{COMMAND_PREFIX}radar assinar arxiv:cs.CL --boletim 08:30`"
+            )
+            return
+
+        alvo = ctx.args[1]
+        resto = " ".join(ctx.args[2:])
+
+        modo = "DIGEST"
+        if "--tempo-real" in resto or "--realtime" in resto:
+            modo = "REALTIME"
+
+        digest_time = "18:00"
+        import re
+        hora_match = re.search(r"--boletim\s+(\d{1,2}:\d{2})", resto)
+        if hora_match:
+            digest_time = hora_match.group(1)
+            modo = "DIGEST"
+
+        filtro_regex = None
+        filtro_match = re.search(r"--filtro\s+[\"']?([^\"'\-\n]+)[\"']?", resto)
+        if filtro_match:
+            filtro_regex = filtro_match.group(1).strip()
+
+        try:
+            res = radar_manager.criar_assinatura(
+                user_id=ctx.author.id,
+                channel_id=ctx.channel.id,
+                url_ou_chave=alvo,
+                keywords_regex=filtro_regex,
+                mode=modo,
+                digest_time=digest_time,
+            )
+        except Exception as e_cad:
+            await ctx.reply(f"❌ Erro ao cadastrar assinatura: `{e_cad}`")
+            return
+
+        modo_label = "⚡ Tempo Real" if res["mode"] == "REALTIME" else f"📰 Boletim diário ({res['digest_time']})"
+        filtro_label = f"\n• **Filtro Regex:** `{res['keywords_regex']}`" if res["keywords_regex"] else ""
+
+        await ctx.reply(
+            f"✅ **Assinatura do Radar Cadastrada!** (ID: `{res['id']}`)\n"
+            f"• **Tipo:** `{res['source_type']}`\n"
+            f"• **Fonte:** <{res['source_url']}>\n"
+            f"• **Canal:** <#{res['channel_id']}>\n"
+            f"• **Frequência:** {modo_label}"
+            f"{filtro_label}\n"
+            f"💡 *A primeira verificação ocorrerá no próximo ciclo ou via `{COMMAND_PREFIX}radar agora`.*"
+        )
+        return
+
+    await ctx.reply(f"⚠️ Subcomando `{sub}` desconhecido. Use `{COMMAND_PREFIX}radar` para ver as instruções.")
+
 

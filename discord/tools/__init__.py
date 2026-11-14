@@ -22,6 +22,7 @@ import tools.agy_tools  # noqa: F401
 import tools.prompt_tools  # noqa: F401
 import tools.topic_tools  # noqa: F401
 import tools.persona_tools  # noqa: F401
+import tools.finops_tools  # noqa: F401
 
 
 from tools.tool_filter import (

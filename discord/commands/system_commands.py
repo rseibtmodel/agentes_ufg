@@ -31,6 +31,7 @@ from digest_manager import (
     obter_configuracao_digest,
 )
 from agy_manager import agy_manager
+from finops_manager import finops_manager
 from message_gateway import message_gateway
 from utils import obter_hora_formatada
 
@@ -832,4 +833,116 @@ async def cmd_agy(ctx: CommandContext) -> None:
         return
 
     await ctx.reply(f"❓ Subcomando desconhecido. Use: `{COMMAND_PREFIX}agy [skills|info|status|consultar]`")
+
+
+def _render_ascii_bar(pct: float, tamanho: int = 14) -> str:
+    """Renderiza uma barra de progresso simples em caracteres ASCII."""
+    preenchido = int(round((min(100.0, max(0.0, pct)) / 100.0) * tamanho))
+    return "█" * preenchido + "░" * (tamanho - preenchido)
+
+
+@register_command(
+    name="finops",
+    description="Painel FinOps, telemetria de tokens, custos de IA e controle de cotas.",
+    usage=f"{COMMAND_PREFIX}finops [status|cotas|modelos|reset]",
+    aliases=["tokens", "custos", "tokenomics"],
+    category="FinOps & Custos",
+    example=f"{COMMAND_PREFIX}finops status",
+)
+async def cmd_finops(ctx: CommandContext) -> None:
+    """Gerencia a observabilidade de custos, limites de tokens e economia local."""
+    subcomando = ctx.args[0].lower() if ctx.args else "status"
+
+    # Força flush de itens pendentes na fila antes de exibir relatórios
+    await finops_manager.flush()
+
+    if subcomando in ("status", "resumo"):
+        res = finops_manager.obter_resumo_finops(dias=30)
+        total_tokens = res["total_tokens"]
+        custo_usd = res["total_cost_usd"]
+        custo_brl = res["total_cost_brl"]
+        econ_brl = res["economia_local_brl"]
+        pct_loc = res["pct_local"]
+        calls = res["total_calls"]
+        fallbacks = res["total_fallbacks"]
+
+        # Obtém também o consumo do dia do usuário
+        saldo = finops_manager.obter_saldo_cotas(ctx.author.id)
+        barra_user = _render_ascii_bar(saldo["user_pct"])
+
+        linhas = [
+            "📊 **PAINEL FINOPS & OBSERVABILIDADE DE TOKENS (ÚLTIMOS 30 DIAS)**",
+            "──────────────────────────────────────────────",
+            f"🪙 **Tokens Totais Processados:** `{total_tokens:,}` across `{calls}` chamadas",
+            f"💰 **Custo Nuvem Estimado:** `$ {custo_usd:.4f}` (~`R$ {custo_brl:.2f}`)",
+            f"🛡️ **Economia Gerada pelo Nó Local:** `R$ {econ_brl:.2f}` (`{pct_loc}%` das inferências)",
+            f"⚡ **Fallbacks por Cota Executados:** `{fallbacks}`",
+            "──────────────────────────────────────────────",
+            f"📈 **Sua Cota Diária ({ctx.author.display_name}):**",
+            f"`[{barra_user}]` **{saldo['user_pct']}%** (`{saldo['user_consumed']:,}` / `{saldo['user_limit']:,}` tokens)",
+            f"🤖 **Cota Diária de Background:** `{saldo['bg_consumed']:,}` / `{saldo['bg_limit']:,}` tokens (`{saldo['bg_pct']}%`)",
+            "──────────────────────────────────────────────",
+            f"💡 *Dica:* Use `{COMMAND_PREFIX}finops cotas` ou `{COMMAND_PREFIX}finops modelos` para detalhes.",
+        ]
+        await ctx.reply("\n".join(linhas))
+        return
+
+    if subcomando in ("cotas", "cota", "limite", "saldo"):
+        saldo = finops_manager.obter_saldo_cotas(ctx.author.id)
+        b_user = _render_ascii_bar(saldo["user_pct"], 18)
+        b_bg = _render_ascii_bar(saldo["bg_pct"], 18)
+
+        status_user = "⚠️ **COTA EXCEDIDA!** (Operando em Fallback Local)" if saldo["user_exceeded"] else "🟢 **Dentro do Limite**"
+        status_bg = "⚠️ **COTA BACKGROUND EXCEDIDA!**" if saldo["bg_exceeded"] else "🟢 **Dentro do Limite**"
+
+        linhas = [
+            f"📈 **BALANÇO DE COTAS DIÁRIAS — {ctx.author.display_name}**",
+            "──────────────────────────────────────────────",
+            f"👤 **Cota Interativa do Usuário:** {status_user}",
+            f"`[{b_user}]` **{saldo['user_pct']}%**",
+            f"• Consumo Hoje: `{saldo['user_consumed']:,}` tokens",
+            f"• Teto Diário: `{saldo['user_limit']:,}` tokens",
+            f"• Restante Nuvem: `{max(0, saldo['user_limit'] - saldo['user_consumed']):,}` tokens",
+            "",
+            f"🤖 **Cota do Sistema (Tarefas em Background):** {status_bg}",
+            f"`[{b_bg}]` **{saldo['bg_pct']}%**",
+            f"• Consumo Hoje: `{saldo['bg_consumed']:,}` tokens",
+            f"• Teto Diário: `{saldo['bg_limit']:,}` tokens",
+            "──────────────────────────────────────────────",
+            "🛡️ *Garantia:* Ao atingir 100% da cota, o bot chaveia automaticamente para o modelo local do LM Studio sem travar a conversa.",
+        ]
+        await ctx.reply("\n".join(linhas))
+        return
+
+    if subcomando in ("modelos", "ranking"):
+        ranking = finops_manager.obter_ranking_modelos(dias=30)
+        if not ranking:
+            await ctx.reply("ℹ️ Nenhum registro de inferência encontrado nos últimos 30 dias.")
+            return
+
+        linhas = [
+            "🏆 **RANKING DE CONSUMO POR MODELO (ÚLTIMOS 30 DIAS)**",
+            "──────────────────────────────────────────────",
+        ]
+        for idx, item in enumerate(ranking[:10], start=1):
+            tipo = "🏠 Local" if item["is_local"] else "⚡ Cloud"
+            linhas.append(
+                f"`#{idx:02d}` **{item['model']}** ({tipo})\n"
+                f"     • `{item['tokens']:,}` tokens | `{item['calls']}` chamadas | Custo: `$ {item['cost_usd']:.4f}`"
+            )
+        linhas.append("──────────────────────────────────────────────")
+        await ctx.reply("\n".join(linhas))
+        return
+
+    if subcomando in ("reset", "resetar"):
+        alvo_id = ctx.args[1] if len(ctx.args) > 1 else str(ctx.author.id)
+        finops_manager.resetar_cota_usuario(alvo_id)
+        await ctx.reply(f"✅ **Cota diária resetada com sucesso para o identificador:** `{alvo_id}`.")
+        return
+
+    await ctx.reply(
+        f"❓ Subcomando FinOps não reconhecido.\n"
+        f"Use: `{COMMAND_PREFIX}finops [status | cotas | modelos | reset]`"
+    )
+
 

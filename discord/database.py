@@ -98,6 +98,8 @@ def init_db(db_path: Optional[str] = None) -> None:
     from prompt_hub import init_prompt_hub_db
     from persona_manager import init_persona_db
     from topic_manager import init_topic_db
+    from finops_manager import init_finops_db
+    from radar_manager import init_radar_db
     init_list_db(caminho)
     init_reminder_db(caminho)
     init_digest_db(caminho)
@@ -105,6 +107,8 @@ def init_db(db_path: Optional[str] = None) -> None:
     init_prompt_hub_db(caminho)
     init_persona_db(caminho)
     init_topic_db(caminho)
+    init_finops_db(caminho)
+    init_radar_db(caminho)
 
 
 def salvar_mensagem(

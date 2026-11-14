@@ -19,6 +19,7 @@ _current_user_id_var: ContextVar[str] = ContextVar("current_user_id", default=""
 _current_channel_id_var: ContextVar[str] = ContextVar("current_channel_id", default="")
 _current_guild_id_var: ContextVar[str] = ContextVar("current_guild_id", default="")
 _current_channel_name_var: ContextVar[str] = ContextVar("current_channel_name", default="")
+_current_origin_type_var: ContextVar[str] = ContextVar("current_origin_type", default="INTERACTIVE")
 
 # Dicionários compartilhados thread-safe em nível de processo indexados por identificador de usuário
 _pending_files_by_user: Dict[str, List[Path]] = defaultdict(list)
@@ -83,6 +84,16 @@ def set_current_channel_name(channel_name: Optional[str]) -> None:
 def get_current_channel_name() -> str:
     """Recupera o nome do canal do contexto atual."""
     return _current_channel_name_var.get() or ""
+
+
+def set_current_origin_type(origin_type: str) -> None:
+    """Define o tipo de origem da execução ('INTERACTIVE' ou 'BACKGROUND')."""
+    _current_origin_type_var.set(origin_type or "INTERACTIVE")
+
+
+def get_current_origin_type() -> str:
+    """Recupera o tipo de origem da execução atual ('INTERACTIVE' ou 'BACKGROUND')."""
+    return _current_origin_type_var.get() or "INTERACTIVE"
 
 
 def set_contexto_requisicao(

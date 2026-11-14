@@ -8,6 +8,7 @@ análise de múltiplas fontes e geração de dossiês estruturados.
 from typing import Any, Dict, Optional
 from context_manager import add_pending_file, get_current_user_id
 from deep_research_manager import deep_research_manager
+from radar_manager import radar_manager
 from tools.registry import register_tool
 
 
@@ -104,3 +105,50 @@ def tool_listar_relatorios_pesquisa(limite: int = 5) -> Dict[str, Any]:
         },
         "erro": None,
     }
+
+
+@register_tool(
+    name="pesquisar_novidades_radar",
+    description="Consulta novidades técnicas, releases do GitHub e artigos do ArXiv capturados e curados pelo Radar de Feeds.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "termo": {
+                "type": "string",
+                "description": "Palavra-chave ou termo para filtrar os itens capturados no radar (opcional).",
+            },
+            "limite": {
+                "type": "integer",
+                "description": "Quantidade máxima de novidades a retornar (padrão: 5).",
+            },
+        },
+    },
+)
+def tool_pesquisar_novidades_radar(termo: Optional[str] = None, limite: int = 5) -> Dict[str, Any]:
+    """Consulta itens capturados pelo radar."""
+    itens = radar_manager.buscar_itens_radar(termo=termo, limite=limite)
+    if not itens:
+        return {
+            "sucesso": True,
+            "dados": {
+                "total": 0,
+                "itens": [],
+                "mensagem": "Nenhuma novidade encontrada no Radar para o filtro informado.",
+            },
+            "erro": None,
+        }
+
+    linhas = [f"📡 **Novidades do Radar de Feeds ({len(itens)}):**\n"]
+    for idx, item in enumerate(itens, start=1):
+        linhas.append(f"{idx}. `[{item['fonte']}]` **{item['titulo']}**\n🔗 <{item['link']}> ({item['processado_em']})")
+
+    return {
+        "sucesso": True,
+        "dados": {
+            "total": len(itens),
+            "itens": itens,
+            "texto_formatado": "\n".join(linhas),
+        },
+        "erro": None,
+    }
+

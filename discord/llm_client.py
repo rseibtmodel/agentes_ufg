@@ -6,11 +6,19 @@ mantendo o heartbeat do Discord ativo e orquestrando o ciclo de chamadas
 de ferramentas (function calling / tools).
 """
 
+import asyncio
 import json
 import logging
 import re
+import time
 from typing import Any, Dict, List, Optional, Tuple
 from openai import AsyncOpenAI
+from context_manager import (
+    get_current_user_id,
+    get_current_channel_id,
+    get_current_origin_type,
+)
+from finops_manager import finops_manager
 from config import (
     DEFAULT_LLM_PROVIDER,
     ENABLE_AUTO_FAILOVER,
@@ -180,12 +188,26 @@ class LLMClient:
         tools: Optional[List[Dict[str, Any]]],
         temperatura: float,
         provider_label: str,
+        is_local: bool = False,
+        user_id: Optional[str] = None,
+        channel_id: Optional[str] = None,
+        origin_type: Optional[str] = None,
+        is_fallback: bool = False,
     ) -> str:
-        """Executa o loop de chat completions resolvendo chamadas de tools."""
+        """Executa o loop de chat completions resolvendo chamadas de tools e registrando telemetria FinOps."""
         historico_conversa = sanitizar_mensagens_jinja(mensagens)
         ferramentas = tools if tools is not None else get_tools_schema()
 
+        uid = user_id or get_current_user_id() or "SYSTEM"
+        cid = channel_id or get_current_channel_id() or ""
+        orig = origin_type or get_current_origin_type() or "INTERACTIVE"
+
+        start_time = time.perf_counter()
+        prompt_tokens_total = 0
+        completion_tokens_total = 0
+
         iteracao = 0
+        texto_resultado = ""
         while iteracao < MAX_TOOL_CALL_ITERATIONS:
             iteracao += 1
             kwargs: Dict[str, Any] = {
@@ -200,8 +222,14 @@ class LLMClient:
             response = await client.chat.completions.create(**kwargs)
             msg_obj = response.choices[0].message
 
+            # Contabiliza tokens da iteração para a telemetria FinOps
+            if getattr(response, "usage", None):
+                prompt_tokens_total += getattr(response.usage, "prompt_tokens", 0) or 0
+                completion_tokens_total += getattr(response.usage, "completion_tokens", 0) or 0
+
             if not getattr(msg_obj, "tool_calls", None):
-                return msg_obj.content or ""
+                texto_resultado = msg_obj.content or ""
+                break
 
             logger.info("[%s] Iteração %d: Modelo solicitou %d tool(s)", provider_label, iteracao, len(msg_obj.tool_calls))
             historico_conversa.append(msg_obj)
@@ -218,12 +246,34 @@ class LLMClient:
                     "tool_call_id": tool_call.id,
                     "content": content_str,
                 })
+        else:
+            logger.warning("[%s] Limite máximo de iterações de tools atingido (%d)", provider_label, MAX_TOOL_CALL_ITERATIONS)
+            texto_resultado = (
+                "⚠️ Limite máximo de chamadas automáticas de ferramentas atingido. "
+                "A resposta foi interrompida para evitar looping infinito."
+            )
 
-        logger.warning("[%s] Limite máximo de iterações de tools atingido (%d)", provider_label, MAX_TOOL_CALL_ITERATIONS)
-        return (
-            "⚠️ Limite máximo de chamadas automáticas de ferramentas atingido. "
-            "A resposta foi interrompida para evitar looping infinito."
-        )
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+
+        # Despacha telemetria de forma não-bloqueante para a fila de FinOps
+        try:
+            asyncio.create_task(
+                finops_manager.registrar_uso(
+                    user_id=uid,
+                    channel_id=cid,
+                    model=model_name,
+                    prompt_tokens=prompt_tokens_total,
+                    completion_tokens=completion_tokens_total,
+                    latency_ms=latency_ms,
+                    is_local=is_local,
+                    origin_type=orig,
+                    is_fallback=is_fallback,
+                )
+            )
+        except Exception as e_fin:
+            logger.debug("[FinOps] Falha ao despachar registro de telemetria: %s", e_fin)
+
+        return texto_resultado
 
     async def gerar_resposta(
         self,
@@ -236,7 +286,7 @@ class LLMClient:
         incluir_badge: bool = False,
         temperature: Optional[float] = None,
     ) -> str:
-        """Gera resposta da LLM orquestrando o roteamento (Local vs Google Gemini vs Auto)."""
+        """Gera resposta da LLM orquestrando o roteamento (Local vs Google Gemini vs Auto) e FinOps."""
         if temperature is not None:
             temperatura = float(temperature)
 
@@ -261,6 +311,23 @@ class LLMClient:
             modelo_alvo = self.local_model
 
         # ---------------------------------------------------------------------
+        # FINOPS CIRCUIT BREAKER: VERIFICAÇÃO DE COTA E FALLBACK LOCAL (IDEA-28)
+        # ---------------------------------------------------------------------
+        u_id = get_current_user_id() or "SYSTEM"
+        c_id = get_current_channel_id() or ""
+        orig_tipo = get_current_origin_type() or "INTERACTIVE"
+
+        forcou_fallback_cota = False
+        if prov_alvo == "google" and finops_manager.deve_forcar_fallback_local(u_id, orig_tipo):
+            logger.warning(
+                "Cota de tokens atingida para %s (%s). Chaveando para LM Studio Local (gratuito)...",
+                u_id, orig_tipo
+            )
+            prov_alvo = "local"
+            modelo_alvo = self.local_model
+            forcou_fallback_cota = True
+
+        # ---------------------------------------------------------------------
         # ROTA 1: EXECUÇÃO NO GOOGLE GEMINI
         # ---------------------------------------------------------------------
         if prov_alvo == "google" and self.google_client:
@@ -277,6 +344,11 @@ class LLMClient:
                     tools,
                     temperatura,
                     f"Gemini-{mod_google}",
+                    is_local=False,
+                    user_id=u_id,
+                    channel_id=c_id,
+                    origin_type=orig_tipo,
+                    is_fallback=False,
                 )
                 self.ultimo_resultado = {
                     "provider": "google",
@@ -298,6 +370,8 @@ class LLMClient:
         mod_local = modelo_alvo or self.local_model
         logger.info("Executando inferência via LM Studio Local (Modelo: %s)...", mod_local)
         badge_local = f"🏠 `[LM Studio: {mod_local}]`"
+        if forcou_fallback_cota:
+            badge_local = f"🏠 `[LM Studio: {mod_local} | Fallback Cota Nuvem]`"
 
         try:
             texto_res = await self._executar_loop_completions(
@@ -307,21 +381,28 @@ class LLMClient:
                 tools,
                 temperatura,
                 "LM-Studio-Local",
+                is_local=True,
+                user_id=u_id,
+                channel_id=c_id,
+                origin_type=orig_tipo,
+                is_fallback=forcou_fallback_cota,
             )
             self.ultimo_resultado = {
                 "provider": "local",
                 "model": mod_local,
-                "failover": False,
+                "failover": forcou_fallback_cota,
                 "badge": badge_local,
             }
             texto_limpo = sanitizar_badges_repetidos(texto_res)
+            if forcou_fallback_cota:
+                texto_limpo += "\n\n*(🪙 Resposta gerada via LM Studio local devido ao atingimento da cota diária de nuvem)*"
             return f"{badge_local}\n\n{texto_limpo}" if incluir_badge else texto_limpo
 
         except Exception as e_local:
             logger.warning("Falha na chamada ao LM Studio Local: %s", e_local)
 
-            # Auto-Failover para Google Gemini se permitido e chave disponível
-            if permitir_failover and ENABLE_AUTO_FAILOVER and self.tem_gemini_disponivel():
+            # Auto-Failover para Google Gemini se permitido e chave disponível (e não tiver forçado por cota)
+            if permitir_failover and ENABLE_AUTO_FAILOVER and self.tem_gemini_disponivel() and not forcou_fallback_cota:
                 logger.warning("⚡ ATIVANDO AUTO-FAILOVER: LM Studio offline ou indisponível. Transbordando para Google Gemini...")
                 mod_failover = self.gemini_flash_model
                 badge_failover = f"⚡ `[Google Gemini: {mod_failover} | Auto-Failover]`"
@@ -334,6 +415,11 @@ class LLMClient:
                         tools,
                         temperatura,
                         "Gemini-Failover",
+                        is_local=False,
+                        user_id=u_id,
+                        channel_id=c_id,
+                        origin_type=orig_tipo,
+                        is_fallback=True,
                     )
                     nota_failover = "\n\n*(⚡ Resposta gerada via Google Gemini devido à indisponibilidade temporária do LM Studio local)*"
                     self.ultimo_resultado = {
