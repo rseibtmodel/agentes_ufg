@@ -1,0 +1,27 @@
+{
+  "id": "ALQ-26111403",
+  "data_criacao": "2026-11-14",
+  "ideia_original": "IDEA-30: Arena Dialética Multiagente em Threads do Discord",
+  "score_final": 9.5,
+  "classificacao": "ouro",
+  "metricas": {
+    "assimetria": 9.5,
+    "singularidade": 9.6,
+    "viabilidade": 9.4
+  },
+  "sintese_executiva": "Simulação de debates multiagente turn-by-turn em Threads do Discord utilizando um único Webhook reutilizável com avatares/nomes customizados, controle passo a passo via botões interativos persistentes e síntese executiva de apoio à decisão.",
+  "nucleo_intransgressivel": [
+    "Reuso estrito de um único webhook com override dinâmico de username e avatar_url no payload",
+    "Controle de avanço passo a passo pelo usuário com botões e modal de injeção humana",
+    "Dois avatares iniciais padrão (Arquiteto e Hacker) com suporte a personas customizadas do ecossistema",
+    "Persistência transacional do histórico e estado das rodadas em SQLite WAL"
+  ],
+  "arquivos_impactados": [
+    "discord/SPECs/SPECS_IDEIAS/30_ARENA_DIALETICA_MULTIAGENTE_EM_THREADS.md",
+    "discord/webhook_manager.py",
+    "discord/database.py",
+    "discord/ui_components.py",
+    "discord/commands/ai_commands.py",
+    "discord/tools/ai_tools.py"
+  ]
+}

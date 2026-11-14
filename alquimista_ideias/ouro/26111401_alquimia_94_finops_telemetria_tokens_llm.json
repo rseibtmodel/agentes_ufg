@@ -1,0 +1,26 @@
+{
+  "id": "ALQ-26111401",
+  "data_criacao": "2026-11-14",
+  "ideia_original": "IDEA-28: FinOps, Telemetria de Tokens & Observabilidade de Custos LLM (Tokenomics)",
+  "score_final": 9.4,
+  "classificacao": "ouro",
+  "metricas": {
+    "assimetria": 9.0,
+    "singularidade": 9.5,
+    "viabilidade": 9.8
+  },
+  "sintese_executiva": "Camada de observabilidade e contabilidade de tokens em tempo real acoplada ao llm_client.py com buffer assíncrono em lote (SQLite WAL) e circuito de failover econômico transparente para LM Studio local ao atingir cotas diárias.",
+  "nucleo_intransgressivel": [
+    "Zero impacto na latência do chat através de buffer assíncrono em memória com flush periódico",
+    "Chaveamento gracioso para modelo local gratuito ao atingir cota, sem abortar a conversa do usuário",
+    "Isolamento obrigatório entre chamadas interativas de usuários e chamadas de background (user_id='SYSTEM_BACKGROUND')",
+    "Badge visual transparente no Discord notificando o chaveamento econômico"
+  ],
+  "arquivos_impactados": [
+    "discord/SPECs/SPECS_IDEIAS/28_FINOPS_TELEMETRIA_DE_TOKENS_E_CUSTOS_LLM.md",
+    "discord/llm_client.py",
+    "discord/database.py",
+    "discord/commands/system_commands.py",
+    "discord/tools/system_tools.py"
+  ]
+}

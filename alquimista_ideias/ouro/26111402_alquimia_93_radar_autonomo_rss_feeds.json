@@ -1,0 +1,26 @@
+{
+  "id": "ALQ-26111402",
+  "data_criacao": "2026-11-14",
+  "ideia_original": "IDEA-29: Radar Autônomo de RSS, ArXiv & Curadoria de Feeds Técnicos",
+  "score_final": 9.3,
+  "classificacao": "ouro",
+  "metricas": {
+    "assimetria": 9.2,
+    "singularidade": 9.2,
+    "viabilidade": 9.6
+  },
+  "sintese_executiva": "Worker assíncrono de monitoramento proativo de feeds do GitHub Releases e ArXiv com cache HTTP condicional (ETag), filtragem em duas etapas (Regex local de keywords seguido de síntese via LLM) e despacho configurável em tempo real ou boletins diários no Discord.",
+  "nucleo_intransgressivel": [
+    "Uso obrigatório de feeds Atom nativos para GitHub para evitar rate limits da API REST",
+    "Filtragem preliminar determinística por Regex de keywords antes de despachar para LLM (custo zero de tokens em descartes)",
+    "Controle duplo de frequência por usuário: suporte a notificações em Tempo Real e Boletins Agrupados",
+    "Despacho via message_gateway com prioridade baixa para não colidir com interações ativas do usuário"
+  ],
+  "arquivos_impactados": [
+    "discord/SPECs/SPECS_IDEIAS/29_RADAR_AUTONOMO_RSS_E_CURADORIA_DE_FEEDS.md",
+    "discord/database.py",
+    "discord/message_gateway.py",
+    "discord/commands/knowledge_commands.py",
+    "discord/tools/research_tools.py"
+  ]
+}

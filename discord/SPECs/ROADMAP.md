@@ -29,8 +29,8 @@ timeline
         v3.7 (Deep Research & AGY Runner) : Deep Research Autônomo [IDEA-17] : AGY Remote Runner Read-Only [IDEA-23] : Help Dinâmico & 6 Módulos
         v3.7.5 (Homologação Forense Total) : Auditoria Spec-Código 100% : 28 Laudos Técnicos : Rastreabilidade Reversa Completa
     section Planejado
-        v4.0 (Execução & Sandbox) : Git Worktree Sandbox [IDEA-24] : Sandbox Python (Análise de Dados) [IDEA-04] : YouTube RAG [IDEA-12] : Finanças Pessoais [IDEA-09]
-        v4.5 (Conectores Corporativos) : Notion & Obsidian [IDEA-03] : Hub de Webhooks [IDEA-11] : Inbox Zero [IDEA-19]
+        v4.0 (Execução & FinOps) : Git Worktree Sandbox [IDEA-24] : Sandbox Python [IDEA-04] : FinOps & Tokens [IDEA-28] : YouTube RAG [IDEA-12] : Finanças Pessoais [IDEA-09]
+        v4.5 (Conectores & Inteligência) : Radar RSS & ArXiv [IDEA-29] : Arena Dialética Threads [IDEA-30] : Notion & Obsidian [IDEA-03] : Hub Webhooks [IDEA-11] : Inbox Zero [IDEA-19]
         v5.0 (Visão & Voz ao Vivo) : Assistente Voice Channel [IDEA-18] : Modo Podcast Multi-Voz [IDEA-10]
         v5.5 (Grafos & Blindagem) : Graph RAG [IDEA-13] : Hábitos [IDEA-14] : SM-2 Flashcards [IDEA-15] : Backup Criptografado [IDEA-21]
         v6.0 (Visão Multimodal) : Vision LLM (OCR e Imagens) [IDEA-05]
@@ -176,15 +176,21 @@ timeline
    - Ingestão de planilhas e arquivos `.csv` com geração de gráficos estatísticos, estatísticas descritivas e consultas em linguagem natural.
 6. **Monitor de Preços & Alertas de Promoção (Price Tracker) [IDEA-16]:**
    - Monitoramento de páginas de e-commerce a cada 4 horas com notificação prioritária no Discord quando o preço atingir a meta desejada.
+7. **FinOps, Telemetria de Tokens & Observabilidade LLM [`IDEA-28`](file:///Users/rodrigomodel/antigravity/discord/SPECs/SPECS_IDEIAS/28_FINOPS_TELEMETRIA_DE_TOKENS_E_CUSTOS_LLM.md):**
+   - Monitoramento de custos por modelo, latência, quotas diárias com chaveamento transparente (fallback gracioso) para o LM Studio local, buffer assíncrono em SQLite WAL e isolamento de background (`user_id='SYSTEM_BACKGROUND'`).
 
-### 🚀 Versão 4.5.0 — Conectores Corporativos, Webhooks & Inbox Zero
-* **Objetivo:** Conectar o bot ao ecossistema de produtividade, desenvolvimento e comunicação do usuário.
+### 🚀 Versão 4.5.0 — Conectores Corporativos, Inteligência de Feeds & Arena Dialética
+* **Objetivo:** Conectar o bot ao ecossistema externo de ferramentas, feeds contínuos e deliberações multiagente.
 1. **Integração com Notion & Obsidian [IDEA-03]:**
    - Sincronização automática das listas de compras e tarefas com bancos de dados do Notion ou notas Markdown em cofres locais do Obsidian.
 2. **Hub de Webhooks & Automações Externas [IDEA-11]:**
    - Servidor HTTP interno assíncrono para receber webhooks do GitHub (alertas de PRs e CI/CD), plataformas de pagamento, ferramentas de monitoramento de servidores e atalhos do iOS/Mac.
 3. **Gestão Inteligente de E-mails & Inbox Zero (Gmail / IMAP) [IDEA-19]:**
    - Classificação de e-mails prioritários, filtro de newsletters, alertas de mensagens urgentes e redação de minutas de resposta direto no Discord.
+4. **Radar Autônomo de RSS, ArXiv & Curadoria de Feeds Técnicos [`IDEA-29`](file:///Users/rodrigomodel/antigravity/discord/SPECs/SPECS_IDEIAS/29_RADAR_AUTONOMO_RSS_E_CURADORIA_DE_FEEDS.md):**
+   - Worker assíncrono que monitora releases do GitHub (.atom) e papers do ArXiv, filtra via regex local preliminar (custo zero) e gera resumos técnicos direcionados em tempo real ou boletins diários no Knowledge Hub.
+5. **Arena Dialética Multiagente em Threads do Discord [`IDEA-30`](file:///Users/rodrigomodel/antigravity/discord/SPECs/SPECS_IDEIAS/30_ARENA_DIALETICA_MULTIAGENTE_EM_THREADS.md):**
+   - Orquestração de debates turn-by-turn em Threads do Discord via Webhook com avatares/nomes customizados (Arquiteto vs Hacker), controle passo a passo por botões interativos persistentes e síntese executiva final.
 
 ### 🚀 Versão 5.0.0 — Áudio Conversacional Imersivo & Voice Channel
 * **Objetivo:** Expandir a experiência de áudio para debates multi-voz e participação em chamadas ao vivo.
