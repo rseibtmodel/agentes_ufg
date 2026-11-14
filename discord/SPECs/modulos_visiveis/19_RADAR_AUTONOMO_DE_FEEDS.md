@@ -118,7 +118,8 @@ CREATE TABLE IF NOT EXISTS radar_subscriptions (
     last_modified TEXT,
     next_run_at TIMESTAMP NOT NULL,
     ativo INTEGER NOT NULL DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_digest_date TEXT DEFAULT NULL
 );
 
 -- Itens já processados (desduplicação por SHA-256)
@@ -155,5 +156,6 @@ CREATE TABLE IF NOT EXISTS radar_digest_buffer (
 | **Comando de Prefixo** | [`discord/commands/knowledge_commands.py`](file:///Users/rodrigomodel/antigravity/discord/commands/knowledge_commands.py) | `cmd_radar` | L545-L680 |
 | **Tool da LLM** | [`discord/tools/research_tools.py`](file:///Users/rodrigomodel/antigravity/discord/tools/research_tools.py) | `tool_pesquisar_novidades_radar` | L100-L150 |
 | **Inicialização no Gateway** | [`discord/chat_discord.py`](file:///Users/rodrigomodel/antigravity/discord/chat_discord.py) | `on_ready` | L125-L130 |
-| **Testes Automatizados** | [`tests/test_radar.py`](file:///Users/rodrigomodel/antigravity/tests/test_radar.py) | `TestRadarManager` | L1-L165 |
+| **Testes Automatizados** | [`tests/test_radar.py`](file:///Users/rodrigomodel/antigravity/tests/test_radar.py) | `TestRadarManager` | L1-L210 |
+| **Resiliência Catch-Up Offline** | [`discord/radar_manager.py`](file:///Users/rodrigomodel/antigravity/discord/radar_manager.py) | `verificar_envio_boletins` | L620-L680 |
 | **Laudo de Auditoria** | [`gerencial/reviews/REV-032_auditoria_radar_autonomo_rss_feeds.md`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-032_auditoria_radar_autonomo_rss_feeds.md) | Laudo `/review` | L1-L45 |

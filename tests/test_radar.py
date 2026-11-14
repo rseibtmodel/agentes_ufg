@@ -167,6 +167,46 @@ class TestRadarManager(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(itens_busca), 1)
         self.assertEqual(itens_busca[0]["titulo"], "Release V1 Engine")
 
+    async def test_catch_up_boletim_apos_horario(self) -> None:
+        """Valida que o boletim pendente é despachado mesmo se o servidor subir após o horário."""
+        sub = self.manager.criar_assinatura(
+            user_id="user_test",
+            channel_id="123456789",
+            url_ou_chave="openai/whisper",
+            mode="DIGEST",
+            digest_time="08:00",
+        )
+        sub_id = sub["id"]
+
+        # Adiciona um item no buffer de digest
+        self.manager._bufferizar_digest(
+            sub_id=sub_id,
+            channel_id="123456789",
+            title="New Whisper Release",
+            link="https://github.com/openai/whisper/releases/tag/v2026",
+            summary="Faster inference update",
+        )
+
+        with patch("message_gateway.message_gateway.dispatch", new=AsyncMock()) as mock_dispatch:
+            # 1ª execução com horário simulado às 10:30 (servidor subiu após as 08:00)
+            from datetime import datetime
+            import zoneinfo
+            fake_agora = datetime(2026, 11, 14, 10, 30, tzinfo=zoneinfo.ZoneInfo("America/Sao_Paulo"))
+
+            with patch("radar_manager.datetime") as mock_dt:
+                mock_dt.now.return_value = fake_agora
+                mock_dt.strftime = datetime.strftime
+
+                enviados = await self.manager.verificar_envio_boletins()
+                self.assertEqual(enviados, 1)
+                mock_dispatch.assert_called_once()
+
+                # 2ª execução no mesmo dia não deve reenviar
+                mock_dispatch.reset_mock()
+                enviados_2 = await self.manager.verificar_envio_boletins()
+                self.assertEqual(enviados_2, 0)
+                mock_dispatch.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

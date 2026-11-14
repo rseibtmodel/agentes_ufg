@@ -22,8 +22,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import xml.etree.ElementTree as ET
 
 import aiohttp
+import zoneinfo
 
-from config import DB_FILE
+from config import CALENDAR_DEFAULT_TIMEZONE, DB_FILE
 from context_manager import set_current_origin_type
 from message_gateway import message_gateway, MessagePriority
 
@@ -56,6 +57,7 @@ class RadarSubscription:
     next_run_at: str
     ativo: bool
     created_at: str
+    last_digest_date: Optional[str] = None
 
 
 def _get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
@@ -124,6 +126,10 @@ def init_radar_db(db_path: Optional[str] = None) -> None:
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_radar_digest_chan ON radar_digest_buffer(channel_id);"
         )
+        try:
+            cursor.execute("ALTER TABLE radar_subscriptions ADD COLUMN last_digest_date TEXT DEFAULT NULL;")
+        except sqlite3.OperationalError:
+            pass  # Coluna já existe
         conn.commit()
 
 
@@ -579,7 +585,7 @@ class RadarManager:
         await message_gateway.dispatch(
             channel=int(channel_id),
             content=texto_final,
-            priority=MessagePriority.LOW,
+            priority=MessagePriority.BACKGROUND,
         )
 
     def buscar_itens_radar(self, termo: Optional[str] = None, limite: int = 5) -> List[Dict[str, Any]]:
@@ -614,28 +620,64 @@ class RadarManager:
             ]
 
     async def verificar_envio_boletins(self) -> int:
-        """Verifica se há boletins acumulados prontos para envio no horário estipulado."""
-        agora_hora = datetime.now().strftime("%H:%M")
+        """Verifica se há boletins acumulados prontos para envio.
+        
+        Suporta recuperação de servidor offline (catch-up): se o servidor iniciou após o horário
+        agendado (ex.: subiu às 10:00 e o boletim era às 09:00), despacha o boletim
+        atrasado imediatamente se ainda não tiver sido enviado no dia de hoje.
+        """
+        tz = zoneinfo.ZoneInfo(CALENDAR_DEFAULT_TIMEZONE)
+        agora = datetime.now(tz)
+        agora_hora = agora.strftime("%H:%M")
+        data_atual = agora.strftime("%Y-%m-%d")
+
         with _get_connection(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT DISTINCT channel_id
+                SELECT id, channel_id, digest_time, last_digest_date
                 FROM radar_subscriptions
-                WHERE mode = 'DIGEST' AND digest_time = ? AND ativo = 1
-                """,
-                (agora_hora,),
+                WHERE mode = 'DIGEST' AND ativo = 1
+                """
             )
-            canais = [r[0] for r in cursor.fetchall()]
+            rows = cursor.fetchall()
 
-        if not canais:
+        if not rows:
+            return 0
+
+        # Agrupa canais elegíveis (agora_hora >= digest_time e ainda não enviado hoje)
+        canais_elegiveis = set()
+        sub_ids_para_atualizar = []
+
+        for sub_id, cid, d_time, last_date in rows:
+            horario_meta = d_time or "18:00"
+            if agora_hora >= horario_meta and last_date != data_atual:
+                canais_elegiveis.add(str(cid))
+                sub_ids_para_atualizar.append(sub_id)
+
+        if not canais_elegiveis:
             return 0
 
         boletins_enviados = 0
-        for cid in canais:
+        for cid in canais_elegiveis:
             enviou = await self.enviar_boletim_canal(cid)
             if enviou:
                 boletins_enviados += 1
+
+        # Marca a data do dia nas assinaturas para garantir envio único por dia
+        if sub_ids_para_atualizar:
+            with _get_connection(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    f"""
+                    UPDATE radar_subscriptions 
+                    SET last_digest_date = ? 
+                    WHERE id IN ({','.join('?' for _ in sub_ids_para_atualizar)})
+                    """,
+                    [data_atual] + sub_ids_para_atualizar,
+                )
+                conn.commit()
+
         return boletins_enviados
 
     async def enviar_boletim_canal(self, channel_id: str | int) -> bool:
@@ -671,7 +713,7 @@ class RadarManager:
         await message_gateway.dispatch(
             channel=int(c_str),
             content="\n".join(linhas),
-            priority=MessagePriority.LOW,
+            priority=MessagePriority.BACKGROUND,
         )
         return True
 

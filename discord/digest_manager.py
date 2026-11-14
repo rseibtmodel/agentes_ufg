@@ -624,9 +624,11 @@ async def iniciar_worker_digest(client: discord.Client, intervalo_segundos: int 
             for row in usuarios_digest:
                 uid, d_time, ch_id, d_city, last_date = row
                 uid_str = str(uid)
-                # Dispara se for o horário programado, ainda não enviado hoje e não estiver rodando agora
-                if d_time == hora_atual and last_date != data_atual and uid_str not in _digests_em_andamento:
-                    logger.info("Disparando Resumo Matinal agendado das %s para usuário %s...", hora_atual, uid_str)
+                # Dispara se o horário agendado já chegou/passou hoje, ainda não enviado na data atual e não estiver rodando agora.
+                # Suporta catch-up após reinicialização do servidor após o horário previsto (ex: subiu às 10:00 e era às 09:00).
+                if hora_atual >= d_time and last_date != data_atual and uid_str not in _digests_em_andamento:
+                    motivo = "horário pontual" if d_time == hora_atual else f"catch-up após inicialização tardia (previsto: {d_time}, atual: {hora_atual})"
+                    logger.info("Disparando Resumo Matinal (%s) para usuário %s...", motivo, uid_str)
                     # Reserva a data imediatamente e marca em andamento para evitar concorrência
                     _digests_em_andamento.add(uid_str)
                     registrar_envio_digest(uid_str, data_atual)
