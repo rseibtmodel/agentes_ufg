@@ -79,6 +79,10 @@ async def cmd_ajuda(ctx: CommandContext) -> None:
             "   Especialistas por canal/thread com System Prompts, temperatura e modelos dedicados.\n",
             f"🧠 **Agentes & Skills (AGY):** `{COMMAND_PREFIX}ajuda agy`",
             "   Inspeção e consultas às 14 skills locais e telemetria do Antigravity Runner.\n",
+            f"📡 **Radar de Feeds (ArXiv, GitHub, RSS):** `{COMMAND_PREFIX}ajuda radar`",
+            "   Sentinela de releases do GitHub, papers do ArXiv e curadoria por IA.\n",
+            f"💰 **FinOps & Custos LLM:** `{COMMAND_PREFIX}ajuda finops`",
+            "   Telemetria de tokens, cotas diárias, estimativa de custos e economia local.\n",
             "─" * 40,
             f"📖 **Como usar:** Digite `{COMMAND_PREFIX}ajuda <modulo>` (ex: `{COMMAND_PREFIX}ajuda agenda` ou `{COMMAND_PREFIX}ajuda web`)",
             f"💡 **Ficha de Comando:** Digite `{COMMAND_PREFIX}ajuda <comando>` (ex: `{COMMAND_PREFIX}ajuda pesquisa_profunda` ou `{COMMAND_PREFIX}ajuda agy`) para ver o manual completo de qualquer comando!",
@@ -442,6 +446,55 @@ async def cmd_ajuda(ctx: CommandContext) -> None:
             "  Consulta a persona de um especialista para emitir um laudo técnico (somente leitura).",
             "  *Exemplo:* `!agy consultar critic Qual o risco de concorrência no SQLite WAL?`\n",
             "💡 *Dica:* A IA também possui as tools `listar_skills_antigravity` e `consultar_skill_antigravity` para consultas via linguagem natural!",
+        ]
+        await ctx.reply("\n".join(linhas))
+        return
+
+    # Módulo: Radar Autônomo de RSS, ArXiv & GitHub (IDEA-29)
+    if modulo in ("radar", "feed", "feeds", "rss", "arxiv", "papers"):
+        linhas = [
+            "📡 **AJUDA: MÓDULO RADAR AUTÔNOMO (RSS, ARXIV & GITHUB)**",
+            "Sentinela proativa de feeds técnicos, releases do GitHub e papers científicos com curadoria por IA:\n",
+            f"• `{COMMAND_PREFIX}radar assinar <fonte> [--tempo-real] [--boletim HH:MM] [--filtro 'regex']`",
+            "  Cadastra o monitoramento de uma fonte técnica no canal atual.",
+            "  *Exemplos:*",
+            f"  └ ArXiv: `{COMMAND_PREFIX}radar assinar arxiv:cs.AI --tempo-real`",
+            f"  └ ArXiv com Filtro: `{COMMAND_PREFIX}radar assinar arxiv:cs.CL --boletim 09:00 --filtro 'reasoning|agents'`",
+            f"  └ GitHub Releases: `{COMMAND_PREFIX}radar assinar vllm-project/vllm --tempo-real`",
+            f"  └ Feed RSS/Atom: `{COMMAND_PREFIX}radar assinar https://huggingface.co/blog/feed.xml`\n",
+            "🔬 **Categorias Populares do ArXiv:**",
+            "  • `arxiv:cs.AI` — Inteligência Artificial Geral",
+            "  • `arxiv:cs.CL` — NLP, Linguagem e Grandes Modelos (LLMs)",
+            "  • `arxiv:cs.LG` — Machine Learning / Aprendizado de Máquina",
+            "  • `arxiv:cs.CV` — Visão Computacional",
+            "  • `arxiv:cs.SE` — Engenharia de Software\n",
+            f"• `{COMMAND_PREFIX}radar listar`",
+            "  Lista todas as assinaturas ativas do seu usuário e seus canais de entrega.\n",
+            f"• `{COMMAND_PREFIX}radar remover <id>`",
+            "  Cancela o monitoramento de uma assinatura pelo ID.\n",
+            f"• `{COMMAND_PREFIX}radar agora`",
+            "  Força varredura e processamento imediato dos feeds agendados.\n",
+            f"• `{COMMAND_PREFIX}radar boletim`",
+            "  Consolida e envia na hora as novidades acumuladas para este canal.\n",
+            "💡 *Dica:* A IA conta com a tool `pesquisar_novidades_radar` para responder sobre novidades capturadas via chat normal!",
+        ]
+        await ctx.reply("\n".join(linhas))
+        return
+
+    # Módulo: FinOps & Custos LLM (IDEA-28)
+    if modulo in ("finops", "tokens", "custos", "telemetria", "cota", "cotas"):
+        linhas = [
+            "💰 **AJUDA: MÓDULO FINOPS & TELEMETRIA DE TOKENS**",
+            "Observabilidade financeira e controle de gastos com modelos de linguagem em tempo real:\n",
+            f"• `{COMMAND_PREFIX}finops status` *(ou apenas `{COMMAND_PREFIX}finops`)*",
+            "  Resumo financeiro: total de tokens (prompt/completion), custo acumulado em USD e economia gerada pelo modelo local.\n",
+            f"• `{COMMAND_PREFIX}finops cotas`",
+            "  Exibe o saldo da sua cota diária (200k tokens) e a cota do sistema de background (500k tokens).\n",
+            f"• `{COMMAND_PREFIX}finops modelos`",
+            "  Tabela de preços oficial por milhão de tokens (Gemini Flash, Gemini Pro e LM Studio Local).\n",
+            f"• `{COMMAND_PREFIX}finops reset`",
+            "  Zera a contagem e restaura as cotas diárias para testes.\n",
+            "💡 *Proteção:* Quando sua cota é atingida, o bot faz fallback automático e gratuito para o LM Studio local sem interromper o serviço!",
         ]
         await ctx.reply("\n".join(linhas))
         return

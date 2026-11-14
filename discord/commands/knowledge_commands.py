@@ -549,34 +549,46 @@ async def cmd_notas(ctx: CommandContext) -> None:
 @register_command(
     name="radar",
     description="Radar autônomo de RSS, ArXiv e GitHub com curadoria por IA (IDEA-29).",
-    usage=f"{COMMAND_PREFIX}radar [assinar|listar|remover|agora|boletim]",
+    usage=f"{COMMAND_PREFIX}radar [assinar|listar|remover|agora|boletim|ajuda]",
     category="Radar & Conhecimento",
-    example=f"{COMMAND_PREFIX}radar assinar vllm-project/vllm --tempo-real",
+    example=f"{COMMAND_PREFIX}radar assinar arxiv:cs.AI --tempo-real",
     aliases=["feed", "rss"],
 )
 async def cmd_radar(ctx: CommandContext) -> None:
     """Gerencia assinaturas e execuções do Radar de Feeds Técnicos."""
-    if not ctx.args:
+    sub = ctx.args[0].lower() if ctx.args else "ajuda"
+
+    if not ctx.args or sub in ("ajuda", "help", "--help", "-h"):
         ajuda = [
             "📡 **RADAR AUTÔNOMO DE RSS, ARXIV & GITHUB (IDEA-29)**",
-            "",
-            "Comandos disponíveis:",
+            "Monitora releases de repositórios, papers científicos e feeds com curadoria por IA.\n",
+            "📋 **Comandos Principais:**",
             f"• `{COMMAND_PREFIX}radar assinar <fonte> [--tempo-real] [--boletim HH:MM] [--filtro 'regex']`",
-            "  *Fontes suportadas:* `dono/repo` (GitHub Releases), `arxiv:cs.AI` ou URL completa de RSS/Atom.",
-            f"• `{COMMAND_PREFIX}radar listar` — Lista suas assinaturas de feeds ativas.",
+            f"• `{COMMAND_PREFIX}radar listar` — Lista suas assinaturas ativas e canais de entrega.",
             f"• `{COMMAND_PREFIX}radar remover <id>` — Cancela o monitoramento de uma assinatura.",
-            f"• `{COMMAND_PREFIX}radar agora` — Força a varredura e coleta imediata dos feeds agendados.",
-            f"• `{COMMAND_PREFIX}radar boletim` — Força a consolidação e envio imediato do boletim deste canal.",
-            "",
-            "💡 *Exemplos:*",
+            f"• `{COMMAND_PREFIX}radar agora` — Força varredura imediata de todas as fontes agendadas.",
+            f"• `{COMMAND_PREFIX}radar boletim` — Despacha na hora os itens acumulados para este canal.\n",
+            "🔬 **Como Assinar o ArXiv (`arxiv:<categoria>`):**",
+            "• `arxiv:cs.AI` — Inteligência Artificial Geral",
+            "• `arxiv:cs.CL` — NLP, Processamento de Linguagem & LLMs",
+            "• `arxiv:cs.LG` — Aprendizado de Máquina (Machine Learning)",
+            "• `arxiv:cs.CV` — Visão Computacional",
+            "• `arxiv:cs.SE` — Engenharia de Software\n",
+            "🐙 **Outras Fontes Suportadas:**",
+            "• `dono/repo` — Releases do GitHub sem token (ex: `vllm-project/vllm`)",
+            "• URL completa de qualquer feed RSS ou Atom XML\n",
+            "⚙️ **Modos de Entrega & Filtros:**",
+            "• `--tempo-real` — Alerta imediato a cada novo paper/release detectado.",
+            "• `--boletim HH:MM` — Acumula os papers e envia um boletim consolidado no horário (padrão: 18:00).",
+            "• `--filtro 'regex'` — Filtro prévio por palavras-chave (custo zero) antes de acionar a IA.\n",
+            "💡 **Exemplos Práticos:**",
+            f"  `{COMMAND_PREFIX}radar assinar arxiv:cs.AI --tempo-real`",
+            f"  `{COMMAND_PREFIX}radar assinar arxiv:cs.CL --boletim 09:00 --filtro 'reasoning|agents'`",
             f"  `{COMMAND_PREFIX}radar assinar vllm-project/vllm --tempo-real`",
-            f"  `{COMMAND_PREFIX}radar assinar arxiv:cs.AI --boletim 09:00 --filtro 'reasoning|agents'`",
             f"  `{COMMAND_PREFIX}radar assinar https://huggingface.co/blog/feed.xml`",
         ]
         await ctx.reply("\n".join(ajuda))
         return
-
-    sub = ctx.args[0].lower()
 
     if sub in ("listar", "list"):
         user_id = str(ctx.author.id)
