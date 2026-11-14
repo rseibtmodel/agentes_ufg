@@ -75,19 +75,22 @@ erDiagram
     USER_LISTS ||--o{ LIST_ITEMS : "contém (ON DELETE CASCADE)"
 ```
 
-### 2.1 Tabela `messages` (Histórico Conversacional Imediato)
+### 2.1 Tabela `messages` (Histórico Conversacional Imediato & Isolamento por Canal)
 ```sql
 CREATE TABLE IF NOT EXISTS messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL,
     role TEXT NOT NULL, -- 'user' ou 'assistant'
     content TEXT NOT NULL,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    channel_id TEXT DEFAULT NULL -- Isolamento opcional de sessão por canal temático (IDEA-25)
 );
 CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages (user_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_channel_id ON messages (channel_id, id DESC);
 ```
 * **Lógica de Concatenação:** Se o usuário enviar duas mensagens consecutivas antes da resposta do assistente (ex: duas mensagens de texto curtas ou um áudio seguido de texto), a função `salvar_mensagem` concatena o novo conteúdo ao registro anterior com duas quebras de linha (`\n\n`), reduzindo a fragmentação da pilha de contexto.
 * **Garantia de Início por `user`:** O método `obter_historico()` localiza o primeiro elemento de papel `user` e descarta mensagens soltas de `assistant` anteriores, atendendo às regras de API de chat.
+* **Isolamento de Sessão por Canal:** Se `channel_id` for informado, o resgate de histórico restringe-se estritamente ao canal ou thread corrente, prevenindo vazamento de contexto entre projetos.
 
 ### 2.2 Tabela `user_settings` (Preferências de Usuário)
 ```sql
@@ -137,9 +140,45 @@ CREATE INDEX IF NOT EXISTS idx_reminders_status_time ON reminders (status, remin
 CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders (user_id, status);
 ```
 
+### 2.5 Tabela `user_model_preferences` (Preferências de IA & Roteamento Híbrido)
+*Incorporada formalmente via auditoria `/spec-audit` com base na IDEA-07.*
+```sql
+CREATE TABLE IF NOT EXISTS user_model_preferences (
+    user_id TEXT PRIMARY KEY,
+    user_name TEXT NOT NULL,
+    provider TEXT NOT NULL DEFAULT 'local', -- 'local', 'google', 'auto'
+    model_name TEXT NOT NULL DEFAULT 'qwen/qwen3.5-9b',
+    auto_failover INTEGER DEFAULT 1,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+* **Roteamento Híbrido Dinâmico:** Armazena se o usuário prefere inferência local (LM Studio), nuvem (Google Gemini) ou roteamento automático com failover transparente.
+
 ---
 
 ## 3. Políticas de Manutenção e Retenção
 
 1. **`limpar_historico(user_id)`:** Executa `DELETE FROM messages WHERE user_id = ?`, liberando o histórico imediato sob demanda do comando `!limpar`.
 2. **Defesa em Profundidade na Exclusão de Listas:** Mesmo com `ON DELETE CASCADE` declarado no SQLite, a rotina `excluir_lista()` executa explicitamente a deleção em `list_items` antes de remover em `user_lists`, prevenindo registros órfãos caso um driver SQLite externo opere com `PRAGMA foreign_keys = OFF`.
+3. **`contar_mensagens(user_id)`:** Retorna o total de mensagens persistidas para o usuário, alimentando relatórios de diagnóstico e status.
+
+---
+
+## 📋 Matriz de Rastreabilidade & Aderência (Auditada em 2026-11-14)
+
+Auditoria forense realizada via [`/spec-audit`](file:///Users/rodrigomodel/antigravity/.agents/skills/spec-audit/SKILL.md) e laudo técnico consolidado em [`REV-003`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-003_auditoria_sqlite_database.md).
+
+| ID | Requisito da Especificação | Status | Implementação no Código | Notas de Auditoria |
+| :---: | :--- | :---: | :--- | :--- |
+| **REQ-01** | `PRAGMA journal_mode = WAL;` na subida | 🟢 **Aderente** | [`database.py:L36`](file:///Users/rodrigomodel/antigravity/discord/database.py#L36)<br>[`reminder_manager.py:L36`](file:///Users/rodrigomodel/antigravity/discord/reminder_manager.py#L36) | Executado compulsoriamente em `init_db()` e conexões concorrentes. |
+| **REQ-02** | Conexões com `timeout=30.0` contra lock | 🟡 **Parcialmente Divergente** | [`database.py:L27`](file:///Users/rodrigomodel/antigravity/discord/database.py#L27)<br>[`list_manager.py:L26,L83,L383,L430`](file:///Users/rodrigomodel/antigravity/discord/list_manager.py#L26) | `list_manager.py` usa default 5s. Ação corretiva `ACT-001` registrada no `REV-003` para padronizar em 30s. |
+| **REQ-03** | Schema DDL da tabela `messages` e índices | 🟢 **Aderente** | [`database.py:L39-L65`](file:///Users/rodrigomodel/antigravity/discord/database.py#L39-L65) | Tabela e índices `idx_messages_user_id` e `idx_messages_channel_id` 100% aderentes. |
+| **REQ-04** | Concatenação de mensagens de mesma `role` | 🟢 **Aderente** | [`database.py:L154-L165`](file:///Users/rodrigomodel/antigravity/discord/database.py#L154-L165) | Concatena com `\n\n` preservando contexto sem fragmentação. |
+| **REQ-05** | Garantia de início por `user` no histórico | 🟢 **Aderente** | [`database.py:L221-L231`](file:///Users/rodrigomodel/antigravity/discord/database.py#L221-L231) | Localiza primeira mensagem de usuário e descarta assistentes soltos. |
+| **REQ-06** | Schema DDL da tabela `user_settings` | 🟢 **Aderente** | [`database.py:L70-L76`](file:///Users/rodrigomodel/antigravity/discord/database.py#L70-L76) | Persistência de modo de resposta (texto/áudio) e voz. |
+| **REQ-07** | Schemas DDL de `user_lists` e `list_items` | 🟢 **Aderente** | [`list_manager.py:L31-L69`](file:///Users/rodrigomodel/antigravity/discord/list_manager.py#L31-L69) | Chaves estrangeiras, `ON DELETE CASCADE` e índices compostos ativos. |
+| **REQ-08** | Schema DDL da tabela `reminders` | 🟢 **Aderente** | [`reminder_manager.py:L57-L82`](file:///Users/rodrigomodel/antigravity/discord/reminder_manager.py#L57-L82) | Persistência de avisos com índices por status e data. |
+| **REQ-09** | Rotina de limpeza `limpar_historico()` | 🟢 **Aderente** | [`database.py:L234-L247`](file:///Users/rodrigomodel/antigravity/discord/database.py#L234-L247) | Executa `DELETE FROM messages WHERE user_id = ?` com retorno de total. |
+| **REQ-10** | Defesa em profundidade na exclusão de listas | 🟢 **Aderente** | [`list_manager.py:L442-L445`](file:///Users/rodrigomodel/antigravity/discord/list_manager.py#L442-L445) | Exclusão explícita de itens filhos antes do registro pai. |
+| **REQ-11** | Tabela `user_model_preferences` (Incorporada) | 🟢 **Aderente** | [`database.py:L79-L90,L334-L434`](file:///Users/rodrigomodel/antigravity/discord/database.py#L79-L90) | Gestão de preferências de IA aprovada na auditoria e integrada à spec. |
+

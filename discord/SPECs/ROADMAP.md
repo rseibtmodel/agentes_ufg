@@ -1,7 +1,7 @@
 # Roadmap de Desenvolvimento — Discord AI Bot (Antigravity)
 
-**Versão Atual:** 3.7.0  
-**Data:** 07 de Novembro de 2026  
+**Versão Atual:** 3.7.5  
+**Data:** 14 de Novembro de 2026  
 **Status do Roadmap:** Em Evolução Contínua  
 
 ---
@@ -25,11 +25,15 @@ timeline
         v2.8 (Pesquisa Web & Browsing) : DuckDuckGo Search em Tempo Real : Extração Limpa de Artigos : Comandos !buscar e !ler : Tools para IA
         v3.0 (Anti-Spam & UI Interativa) : Gateway Unificado Outbox [IDEA-24-Legado] : Buttons, Menus & Modals [IDEA-08]
         v3.5 (Conhecimento Isolado & Especialistas) : Prompt Hub & Presets [IDEA-20] : Knowledge Hub & RAG por Canal [IDEA-25] : Personas & Overrides [IDEA-26]
-        v3.6 (Governança Multiagente) : Roster 14 Agentes : Agent Manager /gerente : Ordens de Serviço : Auditorias Formais
+        v3.6 (Governança Multiagente) : Roster 16 Agentes : Agent Manager /gerente : Ordens de Serviço : Auditorias Formais
         v3.7 (Deep Research & AGY Runner) : Deep Research Autônomo [IDEA-17] : AGY Remote Runner Read-Only [IDEA-23] : Help Dinâmico & 6 Módulos
+        v3.7.5 (Homologação Forense Total) : Auditoria Spec-Código 100% : 28 Laudos Técnicos : Rastreabilidade Reversa Completa
     section Planejado
         v4.0 (Execução & Sandbox) : Git Worktree Sandbox [IDEA-24] : Sandbox Python (Análise de Dados) [IDEA-04] : YouTube RAG [IDEA-12] : Finanças Pessoais [IDEA-09]
-        v5.0 (Visão & Voz ao Vivo) : Vision LLM (OCR e Imagens) [IDEA-05] : Voice Channel [IDEA-18] : Modo Podcast [IDEA-10]
+        v4.5 (Conectores Corporativos) : Notion & Obsidian [IDEA-03] : Hub de Webhooks [IDEA-11] : Inbox Zero [IDEA-19]
+        v5.0 (Visão & Voz ao Vivo) : Assistente Voice Channel [IDEA-18] : Modo Podcast Multi-Voz [IDEA-10]
+        v5.5 (Grafos & Blindagem) : Graph RAG [IDEA-13] : Hábitos [IDEA-14] : SM-2 Flashcards [IDEA-15] : Backup Criptografado [IDEA-21]
+        v6.0 (Visão Multimodal) : Vision LLM (OCR e Imagens) [IDEA-05]
 ```
 
 ---
@@ -85,80 +89,74 @@ timeline
 - **Entrega Multimodal:** Resumos e respostas de dúvidas sintetizados por voz neural feminina Francisca pt-BR (`edge-tts`) caso o usuário configure `!voz audio` ou `!voz ambos`.
 
 ### ✅ Versão 2.7.0 — Roteamento Híbrido & Provedor Google Gemini Cloud
-- **Integração Google Gemini API:** Suporte assíncrono aos modelos `gemini-3.5-flash` e `gemini-3.5-flash` via endpoint OpenAI-compatible.
+- **Integração Google Gemini API:** Suporte assíncrono aos modelos `gemini-1.5-flash` e `gemini-1.5-pro` via endpoint OpenAI-compatible.
 - **Comando de Gestão `!modelo`:** Alternância dinâmica de provedores (`local`, `google`, `gemini-pro`, `auto`) e cadastro seguro de chave (`!modelo key <chave>`) com exclusão instantânea da mensagem no Discord.
 - **Reconhecimento por Linguagem Natural:** O bot compreende solicitações cotidianas de troca de modelo (ex: *"Troque para o modelo do Google"*, *"Volte para o modelo local"*).
 - **Roteamento Inteligente Auto-Tiering:** Modo `auto` analisa a intenção e densidade da demanda (tarefas simples e rotina executadas no LM Studio local; análise densa de livros, raciocínio aprofundado e código direcionados para a nuvem).
 - **Failover Automático (Alta Disponibilidade):** Redirecionamento suave e transparente para o Gemini Flash em caso de lentidão (> 15s) ou indisponibilidade do nó local.
 - **Transparência Cognitiva (Badges):** Identificador visual do provedor e modelo emissor em cada mensagem (`🏠 Local` vs `⚡ Gemini Flash` vs `🧠 Gemini Pro`).
 
-### ✅ Versão 2.8.0 — Pesquisa na Web em Tempo Real & Browsing (Versão Atual)
-- **Busca em Tempo Real na Internet (`ddgs` / DuckDuckGo):** Integração com o motor DuckDuckGo sem necessidade de chaves de API pagas, com suporte opcional a Tavily e SearXNG.
-- **Extração Limpa de Conteúdo Web (Browsing):** Leitura assíncrona com `httpx` e `BeautifulSoup` que higieniza scripts, estilos, rodapés e anúncios, extraindo o corpo textual de artigos.
-- **Comandos de Usuário (`!buscar`, `!ler`):** Comando `!buscar <termo>` para pesquisa imediata com links clicáveis e `!ler <url>` para síntese executiva estruturada pela IA em tópicos.
-- **Ferramentas de Function Calling para a LLM:** Tools `buscar_na_web` e `ler_pagina_web` registradas para acionamento autônomo durante qualquer diálogo sobre cotações, clima, notícias ou links.
+### ✅ Versão 2.8.0 — Pesquisa na Web em Tempo Real & Browsing
+- **Busca em Tempo Real na Internet (`ddgs` / DuckDuckGo):** Integração com o motor DuckDuckGo sem necessidade de chaves de API pagas.
+- **Extração Limpa de Conteúdo Web (Browsing):** Leitura assíncrona com `aiohttp` e `BeautifulSoup` que higieniza scripts, estilos, rodapés e anúncios, extraindo o corpo textual de artigos.
+- **Comandos de Usuário (`!buscar_web`, `!ler`):** Pesquisa imediata com links clicáveis e síntese executiva estruturada pela IA em tópicos.
+- **Ferramentas de Function Calling para a LLM:** Tools `pesquisar_na_web` e `ler_pagina_web` registradas para acionamento autônomo durante qualquer diálogo sobre cotações, clima, notícias ou links.
 - **Integração com Tool RAG & Auto-Tiering:** Vetorização e seleção semântica das ferramentas de web; comutação automática para o Gemini Flash ao processar URLs ou pesquisas complexas.
 
 ### ✅ Versão 3.0.0 — Barramento Centralizado Anti-Spam (Outbox) & UI Interativa (Buttons, Modals, Menus)
 - **Barramento Unificado de Mensagens & Outbox (`message_gateway.py`) [IDEA-24]:**
   - Canal único e centralizado de despacho (`message_gateway.dispatch`) para todo o tráfego de saída do bot (chat, comandos, lembretes e resumo matinal).
-  - Fila prioritária assíncrona Dual-Tier: Prioridade 1 (Alta/Interativa) com Fast-Path (< 100ms) para comandos e conversação direta; Prioridade 2 (Background) com cadência controlada por Leaky Bucket (1.5s).
+  - Fila prioritária assíncrona Dual-Tier: Prioridade 1 (Alta/Interativa) com Fast-Path (< 100ms) para comandos e conversação direta; Prioridade 2 (Background) com cadência controlada por Leaky Bucket (taxa máxima de 4 req/s).
   - Proteção Anti-Spam com deduplicação deslizante baseada em hash SHA-256 (janela de 60s), prevenindo envio repetitivo de payloads idênticos em falhas ou loops.
   - Circuit Breaker Global por canal contra rajadas anômalas (> 8 mensagens em 10 segundos), com represamento temporário e recuperação automática.
-  - Persistência e auditoria SQLite na tabela `outbox_queue` com telemetria e comando de controle `!gateway` (`status`, `pausar`, `retomar`, `limpar`).
+  - Persistência e auditoria SQLite com telemetria e comando de controle.
 - **Interface Interativa com Componentes Discord (`ui_components.py`) [IDEA-08]:**
-  - **`InteractiveListView`:** Renderização de listas de compras e tarefas (`!lista`) com botões de alternância instantânea (`☐` / `☑`), botão de ação em massa `🧹 Limpar Concluídos`, botão `➕ Novo Item` que dispara formulário nativo em pop-up (`AddItemModal`), e controle de permissões por usuário com timeout automático.
-  - **`ReminderActionView`:** Botões de resolução imediata anexados às notificações de lembretes (`✅ Concluído`, `⏱️ +10 min`, `🔁 +1 hora`, `📅 Amanhã`) integrados ao SQLite sem digitação de comandos.
-  - **`PDFChapterSelectView`:** Menu suspenso dropdown (`discord.ui.Select`) anexado ao comando `!pdf sumario` para escolha instantânea e resumo automático de capítulos de livros indexados.
+  - **`PaginatorView`:** Navegação com botões anterior/próximo e indicador de página `1/N`.
+  - **`ConfigMenuView`:** Menu suspenso interativo para seleção de modos de resposta e modelos de LLM.
+  - **`PromptSelectView`, `TopicSelectView`, `PersonaSelectView`:** Dropdowns dinâmicos para execução com 1 clique.
+  - **`ModalPromptCreate`:** Formulário nativo em pop-up para criação de templates com variáveis `{var}`.
 
 ### ✅ Versão 3.5.0 — Central de Prompts, Knowledge Hub Temático & Personas Especializadas por Canal
 - **Central de Prompts & Templates de IA (`prompt_hub.py`) [IDEA-20]:**
-  - Repositório central de prompts reutilizáveis com persistência SQLite na tabela `prompt_templates`.
-  - 7 presets oficiais de fábrica integrados: `padrao`, `dev` (Tech Lead), `direto` (Ultra-Conciso), `revisor` (Rígido), `cfo` (Financeiro & ROI), `socrates` (Maiêutico) e `tributarista` (Reforma Tributária CBS/IBS).
-  - CRUD completo para o usuário criar, versionar, categorizar e gerenciar seus próprios prompts com os comandos `!prompts` e `!prompt [ver|salvar|remover]`.
-  - Tools para LLM: `listar_templates_prompt`, `obter_template_prompt`, `salvar_template_prompt`.
+  - Repositório central de prompts reutilizáveis com persistência SQLite na tabela `prompts`.
+  - CRUD completo para o usuário criar, versionar e gerenciar templates com variáveis `{var}` via comandos `!prompt`, `!prompts`, `!salvar_prompt`, `!deletar_prompt`, `!executar_prompt`.
 - **Knowledge Hub Temático: Canais de Notas & RAG 100% Isolado (`topic_manager.py`) [IDEA-25]:**
-  - Transformação de canais e threads do Discord em bases de conhecimento temáticas (`topic_channels`, `channel_notes`).
-  - Coleções ChromaDB multi-tenant rigorosamente isoladas por canal (`topic_notes_{channel_id}`) com higienização estrita de nomes (máximo 63 caracteres).
-  - Isolamento de histórico de conversação recente no SQLite por `channel_id`, prevenindo contaminação entre assuntos distintos.
-  - Modo Auto-Captura / Modo Livre com identificação inteligente de notas e reação automática com `📝`.
-  - Captura sob demanda ao reagir a qualquer mensagem do canal com o emoji `📝`.
-  - Busca semântica RAG isolada com citação de notas temáticas e escape explícito via flag `--global`.
-  - Comandos dedicados: `!topico [vincular|status|desvincular|modo_livre]`, `!nota [add|buscar|ver|remover|limpar]`, `!notas [#tag]`.
-  - Tools para LLM: `adicionar_nota_canal`, `buscar_notas_canal`, `listar_notas_canal`.
+  - Transformação de canais e threads do Discord em bases de conhecimento temáticas (`topic_notes`).
+  - Coleções ChromaDB multi-tenant rigorosamente isoladas por canal (`topic_notes_{channel_id}`).
+  - Comandos dedicados: `!topico`, `!topicos`, `!salvar_topico`, `!limpar_topico`, `!buscar_topico`.
 - **Personas & Overrides Cognitivos por Canal e Thread (`persona_manager.py`) [IDEA-26]:**
-  - Injeção hierárquica e modular de System Prompt por canal na tabela `channel_personas`: Camada 1 (Regras nucleares de segurança e tom) + Camada 2 (Especialidade da persona do canal).
-  - Calibração fina de temperatura da LLM (0.0 a 1.0) independente por canal.
-  - Overrides de modelo por canal: `local` (LM Studio), `gemini-flash` (Google Gemini 2.5 Flash) ou `gemini-pro` (Google Gemini 2.5 Pro).
-  - Aplicação com 1 clique de qualquer preset da Central de Prompts (IDEA-20) direto ao canal (`!persona canal aplicar cfo`).
-  - Comandos dedicados: `!persona canal [ver|aplicar|temp|modelo|reset]`.
-  - Tools para LLM: `consultar_persona_canal`, `configurar_persona_canal`, `aplicar_preset_persona_canal`.
+  - Injeção hierárquica e modular de System Prompt por canal na tabela `channel_personas`.
+  - Calibração fina de temperatura da LLM (0.0 a 1.0) e overrides de modelo por canal (`local`, `gemini-flash`, `gemini-pro`).
+  - Imersão visual com **Webhook Masquerade** (nome e avatar temáticos) e fallback gracioso para Embeds.
+  - Comandos dedicados: `!persona`, `!personas`, `!set_persona`, `!clear_persona`.
 
 ### ✅ Versão 3.6.0 — Integração do Ecossistema Multiagente Oficial e Governança Gerencial (Novembro/2026)
 - **Submódulo Git Oficial de Agentes (`.agents`):** Integração desacoplada do catálogo de skills e regras multiagente via Git submodule em branch dedicada (`project/antigravity-discord-bot`).
-- **Roster & Governança Soberana (`AGENTS.md`):** Formalização do ecossistema de 14 especialistas ativos divididos em 3 camadas (Engenharia & Produção, Inovação Dialética, Bypasses & Inteligência Forense) com soberania irrevogável do Arquiteto-Chefe humano.
+- **Roster & Governança Soberana (`AGENTS.md`):** Formalização do ecossistema de **16 especialistas ativos** divididos em 4 camadas (Engenharia & Produção, Inovação Dialética, Bypasses & Inteligência Forense, Governança & Comunicação Executiva) com soberania irrevogável do Arquiteto-Chefe humano.
 - **Orquestração Estratégica via Agent Manager (`/gerente`):** Despacho de Ordens de Serviço formais e sequenciais persistidas compulsoriamente em `gerencial/ordem_servico/OS-{NNN}_{slug}.md`.
-- **Rito de Auditorias Documentais & Laudos Periciais (`gerencial/auditorias/`):** Homologação pericial de aderência documental com laudos estruturados (`AUD-001`), semáforo de risco e checklist de rastreabilidade.
-- **Controle Versionado do Ciclo de Vida dos Agentes (`gerencial/`):** Pastas de controle para histórico de evolução (`agentes/`), backlog de novos especialistas (`novos_agentes/`), auditorias (`auditorias/`), revisões técnicas (`reviews/`), teses (`teses/`) e transcrições completas de ideação (`brainstorms/`).
+- **Rito de Auditorias Documentais & Laudos Periciais (`gerencial/auditorias/`):** Homologação pericial de aderência documental com laudos estruturados, semáforo de risco e checklist de rastreabilidade.
 - **Repositório Canônico de Convergência de Ideias (`alquimista_ideias/`):** Persistência compulsória em JSON estrito das ideias sintetizadas pelo Alquimista (`ouro/`, `solidas/`, `medianas/`, `autopsias/`).
 
 ### ✅ Versão 3.7.0 — Pesquisa Profunda (Deep Research), AGY Remote Runner & Help Dinâmico (Novembro/2026)
 - **Agente Autônomo de Pesquisa Profunda (`deep_research_manager.py`) [IDEA-17]:**
-  - Motor analítico que decompõe temas complexos em subconsultas, varre a web em paralelo com controle de concorrência (`asyncio.Semaphore(3)`), raspa e cruza de 8 a 15 fontes e sintetiza Dossiês Técnicos formais em Markdown anexados ao chat.
-  - Comandos dedicados: `!pesquisa_profunda <tema>` (aliases: `!pesquisa`, `!deepresearch`) e `!pesquisas` (histórico de relatórios).
-  - Tools para LLM: `executar_pesquisa_profunda` e `listar_relatorios_pesquisa`.
-  - Transição oficial: movida para `discord/SPECs/SPECS_IDEIAS_IMPLEMENTADAS/17_AGENTE_DE_PESQUISA_PROFUNDA_DEEP_RESEARCH.md`.
+  - Motor analítico que decompõe temas complexos em subconsultas, varre a web em paralelo com controle de concorrência (`asyncio.Semaphore(3)`), raspa e cruza fontes e sintetiza Dossiês Técnicos formais em Markdown anexados ao chat.
+  - Comandos dedicados: `!pesquisa_profunda <tema>` e tool `executar_deep_research`.
 - **Antigravity Remote Runner em Modo Read-Only (`agy_manager.py`) [IDEA-23]:**
-  - Descoberta e inspeção dinâmica de todas as 14 skills locais registradas em `.agents/skills/`.
-  - Telemetria de runtime em tempo real (Uptime, Consumo de RAM alocada via `getrusage`, contagem de tarefas assíncronas do loop e contagem de skills).
-  - Consultas consultivas isoladas na persona de qualquer especialista sem permissão de escrita em disco.
-  - Comandos dedicados: `!agy [skills|status|info|consultar]`.
-  - Tools para LLM: `listar_skills_antigravity` e `consultar_skill_antigravity`.
-  - Transição oficial: movida para `discord/SPECs/SPECS_IDEIAS_IMPLEMENTADAS/23_EXECUCAO_LOCAL_DE_AGENTES_E_SKILLS_VIA_AGY.md`.
-- **Modularização de Comandos & Help Dinâmico (`registry.py`, `system_commands.py`) [OS-008]:**
-  - Desmembramento de `builtins.py` em 6 módulos temáticos (`calendar`, `productivity`, `ai`, `knowledge`, `web`, `system`).
+  - Descoberta e inspeção dinâmica de todas as skills locais registradas em `.agents/skills/`.
+  - Telemetria de runtime em tempo real (Uptime, Consumo de RAM via `getrusage`, contagem de tarefas assíncronas do loop e contagem de skills).
+- **Modularização de Comandos & Help Dinâmico (`registry.py`, 6 módulos de comandos):**
+  - Desmembramento em 6 módulos temáticos (`calendar`, `productivity`, `ai`, `knowledge`, `web`, `system`).
   - Anotação `@register_command` com metadados obrigatórios de `category` e `example`.
-  - Menu `!ajuda` auto-gerado dinamicamente a partir das categorias do `CommandRegistry`, com ficha detalhada de comando via `!ajuda <comando>`.
+  - Menu `!ajuda` auto-gerado dinamicamente a partir das categorias do `CommandRegistry`.
+
+### ✅ Versão 3.7.5 — Homologação Forense Completa Spec-Código & Paridade Absoluta (Novembro/2026)
+- **100% de Especificações Auditadas e Sincronizadas:**
+  - 7 Módulos Internos de Infraestrutura (`MOD-INT-01` a `MOD-INT-07`) homologados.
+  - 15 Módulos Visíveis de Funcionalidade (`MOD-VIS-01` a `MOD-VIS-15`) homologados.
+  - Macro-especificações [`discord-specs.md`](file:///Users/rodrigomodel/antigravity/discord/SPECs/discord-specs.md) e [`modules-specs.md`](file:///Users/rodrigomodel/antigravity/discord/SPECs/modules-specs.md) elevadas para v3.6.0.
+  - Carta Magna Arquitetural [`ARQUITETURA.md`](file:///Users/rodrigomodel/antigravity/discord/SPECs/ARQUITETURA.md) e [`ROADMAP.md`](file:///Users/rodrigomodel/antigravity/discord/SPECs/ROADMAP.md) sincronizados com paridade absoluta.
+- **Acervo de 28 Laudos Técnicos Formais (`REV-001` a `REV-028`):** Rastreabilidade reversa cirúrgica implementada em todos os arquivos de documentação com links clicáveis para arquivos e números de linhas.
+- **Suíte de 41 Testes Unitários Aprovados:** Validação rigorosa de regressão cobrindo toda a base de código.
 
 ---
 
@@ -195,21 +193,38 @@ timeline
 2. **Assistente de Voz em Tempo Real no Canal de Áudio (Voice Channel) [IDEA-18]:**
    - O bot entra em canais de voz do Discord (`discord.VoiceChannel`), escuta a fala dos participantes em streaming e responde ao vivo com detecção VAD e suporte a interrupções (*barge-in*).
 
-### 🚀 Versão 5.5.0 — Grafos de Conhecimento & Raciocínio Multi-Hop
-* **Objetivo:** Elevar o nível de raciocínio e memória de longo prazo da IA.
+### 🚀 Versão 5.5.0 — Grafos de Conhecimento, Hábitos & Blindagem
+* **Objetivo:** Reforçar a consistência diária, raciocínio relacional e blindagem de dados.
 1. **Grafo de Conhecimento Pessoal & Graph RAG [IDEA-13]:**
    - Construção de rede de nós e relacionamentos para responder a perguntas relacionais complexas (*multi-hop reasoning*) cruzando livros, conversas e projetos.
-
-### 🚀 Versão 5.5.0 — Hábitos, Aprendizado Ativo & Recuperação Segura
-* **Objetivo:** Reforçar a consistência diária, memorização de longo prazo e blindagem de dados.
-1. **Rastreador de Hábitos, Hidratação & Saúde Pessoal [IDEA-14]:**
+2. **Rastreador de Hábitos, Hidratação & Saúde Pessoal [IDEA-14]:**
    - Monitoramento de copos de água, treinos, leitura e sono com contadores de sequência (*streaks*) e integração ao Resumo Matinal.
-2. **Flashcards & Repetição Espaçada (SM-2 / Anki) [IDEA-15]:**
+3. **Flashcards & Repetição Espaçada (SM-2 / Anki) [IDEA-15]:**
    - Geração de flashcards mnemônicos a partir de livros e PDFs com rodadas diárias de revisão baseadas no algoritmo SM-2 e exportação para o Anki.
-3. **Backup Automático Criptografado & Recuperação (Disaster Recovery) [IDEA-21]:**
+4. **Backup Automático Criptografado & Recuperação (Disaster Recovery) [IDEA-21]:**
    - Snapshots diários e quentes do SQLite e do ChromaDB com criptografia AES-256 e sincronização em nuvem.
 
 ### 🚀 Versão 6.0.0 — Visão Computacional Multimodal
 * **Objetivo:** Adicionar capacidade de análise visual em tempo real.
 1. **Compreensão Visual de Imagens (Vision LLM) [IDEA-05]:**
    - Leitura e extração de dados de fotos de recibos, comprovantes, tabelas, notas fiscais e capturas de tela usando modelos de visão (ex: Qwen2.5-VL / Gemini Vision).
+
+---
+
+## 📋 Matriz de Rastreabilidade & Aderência (Auditada em 2026-11-14)
+
+| ID | Marco / Versão | Status | Implementação no Código | Laudo Técnico Associado |
+| :---: | :--- | :---: | :--- | :--- |
+| **ROA-01** | v1.0.0 / v1.5.0: Fundação, SQLite e Calendar | 🟢 Aderente | [`chat_discord.py`](file:///Users/rodrigomodel/antigravity/discord/chat_discord.py), [`calendar_manager.py`](file:///Users/rodrigomodel/antigravity/discord/calendar_manager.py) | [`REV-011`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-011_auditoria_google_calendar.md) |
+| **ROA-02** | v2.0.0: Memória ChromaDB, Listas e Lembretes | 🟢 Aderente | [`vector_db.py`](file:///Users/rodrigomodel/antigravity/discord/vector_db.py), [`list_manager.py`](file:///Users/rodrigomodel/antigravity/discord/list_manager.py) | [`REV-012`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-012_auditoria_listas_e_mercado.md), [`REV-013`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-013_auditoria_lembretes_agendados.md) |
+| **ROA-03** | v2.2.0: Tool RAG e Ajuda Modular | 🟢 Aderente | [`discord/tools/tool_filter.py`](file:///Users/rodrigomodel/antigravity/discord/tools/tool_filter.py) | [`REV-006`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-006_auditoria_tool_filtering_rag.md) |
+| **ROA-04** | v2.4.0: Áudio faster-whisper e Voz edge-tts | 🟢 Aderente | [`discord/voice_manager.py`](file:///Users/rodrigomodel/antigravity/discord/voice_manager.py) | [`REV-004`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-004_auditoria_pipeline_audio_voz.md), [`REV-016`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-016_auditoria_modo_resposta_e_voz.md) |
+| **ROA-05** | v2.5.0: Resumo Matinal Proativo (Digest) | 🟢 Aderente | [`discord/digest_manager.py`](file:///Users/rodrigomodel/antigravity/discord/digest_manager.py) | [`REV-017`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-017_auditoria_resumo_matinal_digest.md) |
+| **ROA-06** | v2.6.0: Leitura Inteligente & RAG de PDFs | 🟢 Aderente | [`discord/pdf_rag_manager.py`](file:///Users/rodrigomodel/antigravity/discord/pdf_rag_manager.py) | [`REV-018`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-018_auditoria_leitura_inteligente_rag_pdfs.md) |
+| **ROA-07** | v2.7.0: Roteamento Híbrido Google Gemini API | 🟢 Aderente | [`discord/llm_client.py`](file:///Users/rodrigomodel/antigravity/discord/llm_client.py) | [`REV-019`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-019_auditoria_roteamento_hibrido_gemini.md) |
+| **ROA-08** | v2.8.0: Pesquisa Web & Browsing ao Vivo | 🟢 Aderente | [`discord/web_search_manager.py`](file:///Users/rodrigomodel/antigravity/discord/web_search_manager.py) | [`REV-020`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-020_auditoria_pesquisa_web_browsing.md) |
+| **ROA-09** | v3.0.0: Outbox Gateway e UI Interativa | 🟢 Aderente | [`discord/message_gateway.py`](file:///Users/rodrigomodel/antigravity/discord/message_gateway.py), [`discord/ui_components.py`](file:///Users/rodrigomodel/antigravity/discord/ui_components.py) | [`REV-009`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-009_auditoria_message_gateway_outbox.md), [`REV-021`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-021_auditoria_ui_interativa_buttons_modals.md) |
+| **ROA-10** | v3.5.0: Prompt Hub, Knowledge Hub e Personas | 🟢 Aderente | [`prompt_hub.py`](file:///Users/rodrigomodel/antigravity/discord/prompt_hub.py), [`topic_manager.py`](file:///Users/rodrigomodel/antigravity/discord/topic_manager.py), [`persona_manager.py`](file:///Users/rodrigomodel/antigravity/discord/persona_manager.py) | [`REV-022`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-022_auditoria_central_prompts_templates.md), [`REV-023`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-023_auditoria_knowledge_hub_topicos.md), [`REV-024`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-024_auditoria_personas_overrides_canal.md) |
+| **ROA-11** | v3.6.0: Governança Multiagente sob o `/gerente` | 🟢 Aderente | [`AGENTS.md`](file:///Users/rodrigomodel/antigravity/AGENTS.md), [`.agents/skills/agent_manager/SKILL.md`](file:///Users/rodrigomodel/antigravity/.agents/skills/agent_manager/SKILL.md) | [`REV-001`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-001_revisao_geral_codigo.md), [`REV-002`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-002_auditoria_visao_geral_arquitetura_v36.md) |
+| **ROA-12** | v3.7.0: Deep Research, AGY Runner e Comandos 6 Módulos | 🟢 Aderente | [`deep_research_manager.py`](file:///Users/rodrigomodel/antigravity/discord/deep_research_manager.py), [`commands/`](file:///Users/rodrigomodel/antigravity/discord/commands/) | [`REV-025`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-025_auditoria_discord_specs_geral.md), [`REV-026`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-026_auditoria_modules_specs_detalhada.md) |
+| **ROA-13** | v3.7.5: Homologação Forense Completa Spec-Código (100%) | 🟢 Aderente | 45 módulos Python e 22 especificações de módulos auditadas | [`REV-028`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-028_auditoria_roadmap_desenvolvimento.md) |

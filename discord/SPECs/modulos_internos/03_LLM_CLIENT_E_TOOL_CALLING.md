@@ -1,14 +1,14 @@
 # Especificação Técnica Interna: Motor LLM & Function Calling
 
 **Código do Módulo:** `MOD-INT-03`  
-**Escopo:** Integração Assíncrona com LM Studio, Ciclo de Execução de Tools e Sanitização de Templates Jinja  
+**Escopo:** Cliente Híbrido Assíncrono (LM Studio Local + Google Gemini Cloud Failover), Ciclo de Execução de Tools, Sanitização de Templates Jinja e Contratos Tipados  
 **Arquivos de Implementação:** [`llm_client.py`](file:///Users/rodrigomodel/antigravity/discord/llm_client.py), [`tools/registry.py`](file:///Users/rodrigomodel/antigravity/discord/tools/registry.py)  
 
 ---
 
 ## 1. Visão Geral e Arquitetura do Cliente LLM
 
-A comunicação com o modelo de linguagem é centralizada na classe `LLMClient`. Ela utiliza o SDK oficial `openai.AsyncOpenAI` configurado para apontar para o servidor local do **LM Studio** (`http://localhost:1234/v1`), preservando compatibilidade com qualquer endpoint compatível com o padrão OpenAI Chat Completions (ex: vLLM, Ollama, OpenAI oficial).
+A comunicação com os modelos de linguagem é centralizada na classe `LLMClient`. Ela opera como um cliente híbrido assíncrono que integra o servidor local do **LM Studio** (`http://localhost:1234/v1`) com suporte nativo a endpoints em nuvem como o **Google Gemini API** (`gemini-2.5-flash` e `gemini-2.5-pro`), utilizando o SDK oficial `openai.AsyncOpenAI`.
 
 ### 1.1 Parâmetros Operacionais Padronizados
 * **`base_url`:** `LM_STUDIO_URL` (default: `"http://localhost:1234/v1"`).
@@ -16,6 +16,14 @@ A comunicação com o modelo de linguagem é centralizada na classe `LLMClient`.
 * **`temperature`:** `0.7` (equilíbrio ideal entre precisão factual nas tools e naturalidade expressiva).
 * **`timeout`:** `60.0` segundos por requisição HTTP.
 * **`max_iterations`:** `5` iterações de chamadas de tools por mensagem (prevenção de looping infinito).
+
+### 1.2 Roteamento Híbrido, Auto-Failover e Classificação de Demanda
+Para assegurar disponibilidade contínua e viabilizar tarefas pesadas sem sobrecarregar o hardware local, o cliente implementa os mecanismos da [proposta `IDEA-07`](file:///Users/rodrigomodel/antigravity/discord/SPECs/SPECS_IDEIAS_IMPLEMENTADAS/07_ROTEAMENTO_HIBRIDO_E_PROVEDORES_CLOUD_LLM.md) e do [`Módulo Visível 10`](file:///Users/rodrigomodel/antigravity/discord/SPECs/modulos_visiveis/10_ROTEAMENTO_HIBRIDO_E_GOOGLE_GEMINI.md):
+1. **Auto-Failover de Alta Disponibilidade:** O cliente monitora o LM Studio local com timeout rápido (`LOCAL_TIMEOUT_FAILOVER_SECONDS`). Se o servidor local estiver offline, sem memória ou travar, o método `gerar_resposta()` ativa o transbordo automático (*fallback*) para o Google Gemini Flash, mantendo o serviço do bot ininterrupto.
+2. **Classificação Heurística de Demanda (`classificar_complexidade_demanda`):** No modo `auto`, a mensagem é analisada antes do envio:
+   - Demandas de rotina (saudações, hora, listas, lembretes) são direcionadas ao LM Studio local;
+   - Demandas analíticas ou densas (leitura de livros/PDFs, código complexo, links web ou mensagens > 350 caracteres) são despachadas para o Google Gemini Flash/Pro.
+3. **Identificação Visual Transparente (Badges):** Cada resposta gerada recebe a identificação clara de sua origem: `🏠 [LM Studio: ...]`, `⚡ [Google Gemini: ...]` ou `⚡ [Google Gemini: ... | Auto-Failover]`.
 
 ---
 
@@ -59,6 +67,18 @@ def sanitizar_mensagens_jinja(mensagens: List[Any]) -> List[Any]:
         mensagens_finais.append({"role": "system", "content": "\n\n".join(system_partes)})
     mensagens_finais.extend(outras_mensagens)
     return mensagens_finais
+```
+
+### 2.3 Higienização de Badges Visuais Repetidos (`sanitizar_badges_repetidos`)
+Modelos autorregressivos expostos a histórico conversacional com identificadores de provedor tendem a imitar o cabeçalho no corpo gerado.
+Para evitar poluição visual com badges duplicados (`🏠 [LM Studio: ...]`, `⚡ [Google Gemini: ...]`), a função `sanitizar_badges_repetidos(texto)` aplica limpeza defensiva com expressão regular antes de retornar a resposta ao usuário:
+
+```python
+def sanitizar_badges_repetidos(texto: str) -> str:
+    if not texto:
+        return ""
+    padrao = r"^(?:[\s\n]*[`⚡🏠🧠\s]*\[(?:Google Gemini|LM Studio)[^\]]+\][`\s]*)+"
+    return re.sub(padrao, "", texto, flags=re.MULTILINE).strip()
 ```
 
 ---
@@ -128,3 +148,26 @@ Todas as funções registradas como ferramentas de Function Calling (`@register_
 **Benefícios Arquiteturais:**
 1. **Consistência Cognitiva para a LLM:** O modelo recebe sempre a mesma convenção sintática, facilitando a interpretação determinística de falhas e sucessos.
 2. **Tratamento Defensivo:** Erros de infraestrutura, validação ou APIs externas nunca explodem exceções não tratadas no loop assíncrono; são encapsulados em `{"sucesso": False, "erro": "...", "dados": None}` para que a LLM explique o ocorrido com naturalidade ao usuário.
+
+### 3.3 API de Introspecção do Catálogo (`get_registered_names`)
+O registro expõe o método `get_registered_names() -> List[str]`, permitindo ao motor de Tool RAG semântico, aos comandos de diagnóstico de terminal e aos testes automatizados inspecionar dinamicamente o catálogo de ferramentas carregadas no runtime.
+
+---
+
+## 4. 📋 Matriz de Rastreabilidade & Aderência (Auditada em 2026-11-14)
+
+Auditoria realizada via [`/spec-audit`](file:///Users/rodrigomodel/antigravity/.agents/skills/spec-audit/SKILL.md) com homologação do [`/review`](file:///Users/rodrigomodel/antigravity/gerencial/reviews/REV-005_auditoria_llm_client_tools.md) e [`/doc_master`](file:///Users/rodrigomodel/antigravity/gerencial/auditorias/auditoria_2026-11-14_03_LLM_CLIENT_E_TOOL_CALLING.md):
+
+| ID | Requisito da Especificação | Status | Implementação no Código | Notas de Auditoria |
+| :---: | :--- | :---: | :--- | :--- |
+| **REQ-01** | Parâmetros operacionais padronizados do LLM | 🟢 **Aderente** | [`llm_client.py:L117-L128,L189`](file:///Users/rodrigomodel/antigravity/discord/llm_client.py#L117-L128) | Consome `LM_STUDIO_URL`, `MODELO_LLM`, `temperature=0.7`, `timeout=60.0s` e `max_iterations=5`. |
+| **REQ-02** | Sanitização defensiva para templates Jinja | 🟢 **Aderente** | [`llm_client.py:L42-L74`](file:///Users/rodrigomodel/antigravity/discord/llm_client.py#L42-L74) (`sanitizar_mensagens_jinja`) | Normaliza mensagens `system` em bloco único no índice 0. |
+| **REQ-03** | Ciclo de orquestração de ferramentas (Loop) | 🟢 **Aderente** | [`llm_client.py:L175-L226`](file:///Users/rodrigomodel/antigravity/discord/llm_client.py#L175-L226) (`_executar_loop_completions`) | Loop com limite de 5 iterações, `tools` e resolução assíncrona. |
+| **REQ-04** | Blindagem contra alucinação de argumentos | 🟢 **Aderente** | [`tools/registry.py:L150-L156`](file:///Users/rodrigomodel/antigravity/discord/tools/registry.py#L150-L156) (`ToolRegistry.execute`) | Descarta chaves inexistentes em `sig.parameters` se não houver `**kwargs`. |
+| **REQ-05** | Offloading assíncrono de tools síncronas | 🟢 **Aderente** | [`tools/registry.py:L158-L163`](file:///Users/rodrigomodel/antigravity/discord/tools/registry.py#L158-L163) (`ToolRegistry.execute`) | Executa síncronas via `asyncio.to_thread` preservando heartbeat do Discord. |
+| **REQ-06** | Schema automático e registro decorado | 🟢 **Aderente** | [`tools/registry.py:L29-L116`](file:///Users/rodrigomodel/antigravity/discord/tools/registry.py#L29-L116) (`@register_tool`) | Inferência de tipos tipada e exportação `get_schemas()`. |
+| **REQ-07** | Contrato canônico de retorno das ferramentas | 🟢 **Aderente** | [`tools/registry.py:L164-L215`](file:///Users/rodrigomodel/antigravity/discord/tools/registry.py#L164-L215) (`ToolRegistry.execute`) | Normaliza compulsoriamente em `{"sucesso": bool, "dados": Any, "erro": str}`. |
+| **REQ-08** | Roteamento híbrido e auto-failover | 🟢 **Aderente** | [`llm_client.py:L77-L112,L129-L174,L228-L355`](file:///Users/rodrigomodel/antigravity/discord/llm_client.py#L77-L112) | Google Gemini API + Failover automático sob indisponibilidade do nó local. |
+| **REQ-09** | Higienização de badges visuais repetidos | 🟢 **Aderente** | [`llm_client.py:L34-L40,L287,L317,L345`](file:///Users/rodrigomodel/antigravity/discord/llm_client.py#L34-L40) (`sanitizar_badges_repetidos`) | Remove regex de badges redundantes simulados pela LLM. |
+| **REQ-10** | Introspecção do catálogo de ferramentas | 🟢 **Aderente** | [`tools/registry.py:L216-L219`](file:///Users/rodrigomodel/antigravity/discord/tools/registry.py#L216-L219) (`get_registered_names`) | API limpa para inspeção das ferramentas carregadas no runtime. |
+
