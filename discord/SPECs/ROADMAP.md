@@ -176,8 +176,8 @@ timeline
    - Ingestão de planilhas e arquivos `.csv` com geração de gráficos estatísticos, estatísticas descritivas e consultas em linguagem natural.
 6. **Monitor de Preços & Alertas de Promoção (Price Tracker) [IDEA-16]:**
    - Monitoramento de páginas de e-commerce a cada 4 horas com notificação prioritária no Discord quando o preço atingir a meta desejada.
-7. **FinOps, Telemetria de Tokens & Observabilidade LLM [`IDEA-28`](file:///Users/rodrigomodel/antigravity/discord/SPECs/SPECS_IDEIAS/28_FINOPS_TELEMETRIA_DE_TOKENS_E_CUSTOS_LLM.md):**
-   - Monitoramento de custos por modelo, latência, quotas diárias com chaveamento transparente (fallback gracioso) para o LM Studio local, buffer assíncrono em SQLite WAL e isolamento de background (`user_id='SYSTEM_BACKGROUND'`).
+7. **FinOps, Telemetria de Tokens & Observabilidade LLM [`IDEA-28`](file:///Users/rodrigomodel/antigravity/discord/SPECs/SPECS_IDEIAS_IMPLEMENTADAS/28_FINOPS_TELEMETRIA_DE_TOKENS_E_CUSTOS_LLM.md):**
+   - Monitoramento de custos por modelo, latência, quotas diárias com chaveamento transparente (fallback gracioso) para o LM Studio local, buffer assíncrono em SQLite WAL e isolamento de background (`user_id='SYSTEM_BACKGROUND'`). Módulo visível [`MOD-VIS-18`](file:///Users/rodrigomodel/antigravity/discord/SPECs/modulos_visiveis/18_FINOPS_E_TELEMETRIA_DE_TOKENS.md).
 
 ### 🚀 Versão 4.5.0 — Conectores Corporativos, Inteligência de Feeds & Arena Dialética
 * **Objetivo:** Conectar o bot ao ecossistema externo de ferramentas, feeds contínuos e deliberações multiagente.
@@ -187,8 +187,8 @@ timeline
    - Servidor HTTP interno assíncrono para receber webhooks do GitHub (alertas de PRs e CI/CD), plataformas de pagamento, ferramentas de monitoramento de servidores e atalhos do iOS/Mac.
 3. **Gestão Inteligente de E-mails & Inbox Zero (Gmail / IMAP) [IDEA-19]:**
    - Classificação de e-mails prioritários, filtro de newsletters, alertas de mensagens urgentes e redação de minutas de resposta direto no Discord.
-4. **Radar Autônomo de RSS, ArXiv & Curadoria de Feeds Técnicos [`IDEA-29`](file:///Users/rodrigomodel/antigravity/discord/SPECs/SPECS_IDEIAS/29_RADAR_AUTONOMO_RSS_E_CURADORIA_DE_FEEDS.md):**
-   - Worker assíncrono que monitora releases do GitHub (.atom) e papers do ArXiv, filtra via regex local preliminar (custo zero) e gera resumos técnicos direcionados em tempo real ou boletins diários no Knowledge Hub.
+4. **Radar Autônomo de RSS, ArXiv & Curadoria de Feeds Técnicos [`IDEA-29`](file:///Users/rodrigomodel/antigravity/discord/SPECs/SPECS_IDEIAS_IMPLEMENTADAS/29_RADAR_AUTONOMO_RSS_E_CURADORIA_DE_FEEDS.md):**
+   - Worker assíncrono que monitora releases do GitHub (.atom) e papers do ArXiv, filtra via regex local preliminar (custo zero) e gera resumos técnicos direcionados em tempo real ou boletins diários no Knowledge Hub. Módulo visível [`MOD-VIS-19`](file:///Users/rodrigomodel/antigravity/discord/SPECs/modulos_visiveis/19_RADAR_AUTONOMO_DE_FEEDS.md).
 5. **Arena Dialética Multiagente em Threads do Discord [`IDEA-30`](file:///Users/rodrigomodel/antigravity/discord/SPECs/SPECS_IDEIAS/30_ARENA_DIALETICA_MULTIAGENTE_EM_THREADS.md):**
    - Orquestração de debates turn-by-turn em Threads do Discord via Webhook com avatares/nomes customizados (Arquiteto vs Hacker), controle passo a passo por botões interativos persistentes e síntese executiva final.
 

@@ -1,7 +1,7 @@
 # Especificação de Ideia de Módulo: Radar Autônomo de RSS, ArXiv & Curadoria de Feeds Técnicos
 
 **Código da Proposta:** `IDEA-29`  
-**Status:** Proposto / Refinado via `/brainstorm` (Prioridade Alta)  
+**Status:** Implementado em Produção ([MOD-VIS-19](file:///Users/rodrigomodel/antigravity/discord/SPECs/modulos_visiveis/19_RADAR_AUTONOMO_DE_FEEDS.md))  
 **Impacto:** Transforma o bot em uma central proativa de inteligência tecnológica contínua, monitorando releases de repositórios do GitHub e papers científicos do ArXiv, sintetizando novidades relevantes e distribuindo em tempo real ou boletins nos canais temáticos do Knowledge Hub.
 
 ---

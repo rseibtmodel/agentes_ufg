@@ -1,7 +1,7 @@
 # Especificação de Ideia de Módulo: FinOps, Telemetria de Tokens & Observabilidade de Custos LLM
 
 **Código da Proposta:** `IDEA-28`  
-**Status:** Proposto / Refinado via `/brainstorm` (Prioridade Alta)  
+**Status:** Implementado em Produção ([MOD-VIS-18](file:///Users/rodrigomodel/antigravity/discord/SPECs/modulos_visiveis/18_FINOPS_E_TELEMETRIA_DE_TOKENS.md))  
 **Impacto:** Permite monitorar em tempo real o consumo de tokens (prompt, completion), latência, custos financeiros acumulados (Cloud vs Local) e aplicar cotas com chaveamento transparente (fallback gracioso) para o LM Studio local.
 
 ---
