@@ -407,20 +407,42 @@ class RadarManager:
             conn.commit()
         return removido
 
-    async def processar_ciclo_agendado(self) -> int:
-        """Busca todas as assinaturas vencidas e processa as novidades."""
+    async def processar_ciclo_agendado(
+        self,
+        forcar: bool = False,
+        user_id: Optional[str | int] = None,
+        limite: int = 20,
+    ) -> int:
+        """Busca as assinaturas do Radar e processa as novidades dos feeds.
+        
+        Args:
+            forcar: Se True, ignora a restrição de next_run_at e processa imediatamente.
+            user_id: Opcional, filtra assinaturas de um usuário específico quando forçado.
+            limite: Limite de assinaturas processadas por ciclo (padrão 20).
+        """
         now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         with _get_connection(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT id, user_id, channel_id, source_type, source_url, keywords_regex, mode, digest_time, etag, last_modified, next_run_at, ativo, created_at
+            params: List[Any] = []
+            filtros = ["ativo = 1"]
+
+            if not forcar:
+                filtros.append("next_run_at <= ?")
+                params.append(now_str)
+
+            if user_id is not None:
+                filtros.append("user_id = ?")
+                params.append(str(user_id))
+
+            params.append(limite)
+            query = f"""
+                SELECT id, user_id, channel_id, source_type, source_url, keywords_regex, mode, digest_time, etag, last_modified, next_run_at, ativo, created_at, last_digest_date
                 FROM radar_subscriptions
-                WHERE next_run_at <= ? AND ativo = 1
-                LIMIT 5
-                """,
-                (now_str,),
-            )
+                WHERE {' AND '.join(filtros)}
+                ORDER BY next_run_at ASC
+                LIMIT ?
+            """
+            cursor.execute(query, params)
             rows = cursor.fetchall()
 
         if not rows:
@@ -432,7 +454,7 @@ class RadarManager:
                 id=r[0], user_id=r[1], channel_id=r[2], source_type=r[3],
                 source_url=r[4], keywords_regex=r[5], mode=r[6], digest_time=r[7],
                 etag=r[8], last_modified=r[9], next_run_at=r[10], ativo=bool(r[11]),
-                created_at=r[12]
+                created_at=r[12], last_digest_date=r[13] if len(r) > 13 else None,
             )
             try:
                 await self._processar_assinatura(sub)

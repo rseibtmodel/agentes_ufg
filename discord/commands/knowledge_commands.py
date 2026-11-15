@@ -621,8 +621,9 @@ async def cmd_radar(ctx: CommandContext) -> None:
         return
 
     if sub in ("agora", "run", "scan"):
-        await ctx.reply("🔄 Executando ciclo de varredura imediata dos feeds do Radar...")
-        total = await radar_manager.processar_ciclo_agendado()
+        user_id = str(ctx.author.id)
+        await ctx.reply("🔄 Executando varredura imediata e forçada dos seus feeds do Radar...")
+        total = await radar_manager.processar_ciclo_agendado(forcar=True, user_id=user_id)
         await ctx.reply(f"✅ Ciclo concluído. `{total}` assinatura(s) verificada(s).")
         return
 
